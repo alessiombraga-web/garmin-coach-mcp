@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0 — 2026-11-01
+
+**Install without Docker: Garmin Coach is now also a Claude Desktop extension.**
+
+- New all-in-one Claude Desktop extension (`garmin-coach-<version>.mcpb`): double-click, paste the Garmin
+  Personal API key, done. Runs inside Claude Desktop (Python managed by Claude Desktop via uv), stores the archive
+  in `Documents/Garmin Coach` or a chosen folder, syncs while Claude Desktop is open. Read-only (official API).
+- New Docker connector extension (`garmin-coach-docker-connector-<version>.mcpb`): connects Claude Desktop to the
+  Docker server with a form (address + MCP token). No Node.js installation and no `claude_desktop_config.json` editing.
+- New tools `get_athlete_notes` / `update_athlete_notes`: tell Claude about yourself in chat and it remembers.
+- Cross-process sync lock (Claude Desktop can start more than one server process).
+- Docker server: OAuth discovery probes answered with 404 and a clear 401 message for a wrong MCP token
+  (mcp-remote used to report a misleading "Dynamic Client Registration rejected"); quotes around `MCP_TOKEN` ignored.
+- Clearer `network_error` status when Garmin can't be reached.
+- The community module is imported only when used (not installed in the extension).
+- Docs: plain-language Italian guide (`README.it.md`), Italian Docker guide (`docs/docker.it.md`), English README
+  reorganised; manual setup now lists Node.js install for Windows and macOS and recommends the full `npx` path.
+- `scripts/build-mcpb.sh` and a GitHub workflow that attaches both `.mcpb` files to each release.
+
 ## 0.2.0 — 2026-10-25
 
 **Data is now read through Garmin's official Connect Personal API, which is read-only.

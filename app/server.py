@@ -11,7 +11,6 @@ from collections import defaultdict
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 
-import uvicorn
 from mcp.server.fastmcp import FastMCP
 
 from . import config, db, garmin, sync, workouts
@@ -33,6 +32,9 @@ when it is disabled the workout tools explain how to enable it.
 - Structured workouts: call `create_workout` WITHOUT confirm first and show the preview; call it again
   with confirm=true only after the athlete approves. With `date` it is scheduled in the Garmin calendar
   and reaches the watch at the next sync.
+- Athlete notes: when the athlete tells you lasting facts useful for analysis (max HR, zones, sensors,
+  shoes, injuries to keep in mind, goals), offer to save them with `update_athlete_notes`; read them
+  with `get_athlete_notes`. They are also appended below at server start.
 - Units: pace min:ss/km, cadence steps/min, vertical oscillation cm, ground-contact balance left%/right%.
 """
 
@@ -203,17 +205,21 @@ def sync_status() -> str:
     """Archive status: counts, period covered, latest syncs."""
     with ro() as conn:
         c = conn.execute(
-            "SELECT count(*) n, sum(type_key LIKE '%run%') runs, sum(has_details=1) det, "
-            "sum(has_details=-1) failed, min(start_local) first, max(start_local) last "
+            "SELECT count(*) n, coalesce(sum(type_key LIKE '%run%'),0) runs, "
+            "coalesce(sum(has_details=1),0) det, coalesce(sum(has_details=-1),0) failed, "
+            "min(start_local) first, max(start_local) last "
             "FROM activities").fetchone()
         logs = conn.execute("SELECT * FROM sync_log ORDER BY id DESC LIMIT 5").fetchall()
     src = config.read_source()
+    write = ("not available in the desktop extension" if config.RUNTIME == "extension"
+             else "enabled" if config.ENABLE_GARMINCONNECT else "disabled")
     out = [f"read source: {'official Personal API (read-only)' if src == 'official' else src or 'NOT CONFIGURED'}",
-           f"write access (community module): {'enabled' if config.ENABLE_GARMINCONNECT else 'disabled'}",
+           f"write access (community module): {write}",
            f"activities: {c['n']} (runs: {c['runs']}, with FIT/laps: {c['det']}, "
            f"failed downloads: {c['failed']})",
            f"period: {c['first']} → {c['last']}",
-           f"sync running: {'yes' if sync._lock.locked() else 'no'}", "latest syncs:"]
+           f"sync running: {'yes' if sync._lock.locked() or sync.sync_running_elsewhere() else 'no'}",
+           f"data folder: {config.DATA_DIR} ({config.RUNTIME})", "latest syncs:"]
     for r in logs:
         out.append(f"- {r['started_at']} {r['mode']} → {r['status']} "
                    f"(new {r['new_activities']}, FIT {r['detailed']}) {r['message']}")
@@ -467,6 +473,35 @@ def query_sql(sql: str, max_rows: int = 300) -> str:
         f"[{len(rows)} rows, {time.time() - t:.2f}s]"
 
 
+# ---------------------------------------------------------------- athlete notes
+@mcp.tool()
+def get_athlete_notes() -> str:
+    """Read the athlete's saved notes (sensors, max HR, zones, shoes, goals, things to keep in mind)."""
+    try:
+        text = config.ATHLETE_FILE.read_text(encoding="utf-8").strip()
+    except FileNotFoundError:
+        text = ""
+    return text or "No athlete notes saved yet."
+
+
+@mcp.tool()
+def update_athlete_notes(notes: str, mode: str = "append") -> str:
+    """Save lasting notes about the athlete for future chats (e.g. max HR, HR zones, chest strap since
+    a date, target cadence, which shoes are for what, goal race). Only save what the athlete confirmed.
+    mode: 'append' adds the text as new line(s); 'replace' rewrites all notes (read them first)."""
+    if mode not in ("append", "replace"):
+        return "mode must be 'append' or 'replace'."
+    notes = notes.strip()
+    if not notes:
+        return "Nothing to save."
+    config.ATHLETE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    current = ""
+    if mode == "append" and config.ATHLETE_FILE.exists():
+        current = config.ATHLETE_FILE.read_text(encoding="utf-8").rstrip() + "\n"
+    config.ATHLETE_FILE.write_text(current + notes + "\n", encoding="utf-8")
+    return f"Athlete notes saved ({mode}) in {config.ATHLETE_FILE}."
+
+
 # ---------------------------------------------------------------- structured workouts
 @mcp.tool()
 def create_workout(name: str, steps: list[dict], date: str | None = None,
@@ -587,7 +622,17 @@ class BearerAuth:
     def __init__(self, app, token: str | None):
         self.app, self.token = app, token
 
+    async def _plain(self, send, status: int, body: bytes):
+        await send({"type": "http.response.start", "status": status,
+                    "headers": [(b"content-type", b"text/plain")]})
+        await send({"type": "http.response.body", "body": body})
+
     async def __call__(self, scope, receive, send):
+        # No OAuth here: answer discovery probes with 404 so clients (e.g. mcp-remote) don't try an
+        # OAuth login and hide the real problem behind a "client registration" error.
+        if scope["type"] == "http" and (scope.get("path") or "").startswith("/.well-known/"):
+            await self._plain(send, 404, b"not found")
+            return
         if scope["type"] == "http" and scope.get("path") == "/healthz":
             await send({"type": "http.response.start", "status": 200,
                         "headers": [(b"content-type", b"text/plain")]})
@@ -595,10 +640,11 @@ class BearerAuth:
             return
         if scope["type"] == "http" and self.token:
             hdrs = dict(scope.get("headers") or [])
-            if hdrs.get(b"authorization", b"").decode() != f"Bearer {self.token}":
-                await send({"type": "http.response.start", "status": 401,
-                            "headers": [(b"content-type", b"text/plain")]})
-                await send({"type": "http.response.body", "body": b"unauthorized"})
+            if hdrs.get(b"authorization", b"").decode().strip() != f"Bearer {self.token}":
+                log.warning("Rejected request to %s: missing or wrong MCP token", scope.get("path"))
+                await self._plain(send, 401, b"unauthorized: missing or wrong MCP token. Check MCP_TOKEN "
+                                             b"in .env and the token in Claude Desktop; after editing .env "
+                                             b"run `docker compose up -d`.")
                 return
         await self.app(scope, receive, send)
 
@@ -617,7 +663,18 @@ def _scheduler():
         time.sleep(config.SYNC_INTERVAL_MIN * 60)
 
 
+def serve_stdio():
+    """Claude Desktop extension: MCP over stdio, background sync while Claude Desktop is open."""
+    db.init()
+    if config.SYNC_INTERVAL_MIN > 0:
+        threading.Thread(target=_scheduler, daemon=True).start()
+    log.info("garmin-coach (extension) data folder: %s", config.DATA_DIR)
+    mcp.run(transport="stdio")
+
+
 def serve():
+    import uvicorn
+
     db.init()
     if config.SYNC_INTERVAL_MIN > 0:
         threading.Thread(target=_scheduler, daemon=True).start()

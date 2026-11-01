@@ -1,0 +1,13 @@
+[project]
+name = "garmin-coach-extension"
+version = "0.3.0"
+description = "Garmin Coach Claude Desktop extension (read-only, official Garmin Personal API)"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "garmin-connect-personal-api-python==1.0.0",
+    "mcp==1.27.0",
+    "fitdecode==0.11.0",
+]
+
+[tool.uv]
+package = false

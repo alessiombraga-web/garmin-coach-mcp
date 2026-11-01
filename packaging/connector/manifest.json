@@ -1,0 +1,57 @@
+{
+  "manifest_version": "0.3",
+  "name": "garmin-coach-connector",
+  "display_name": "Garmin Coach (Docker server)",
+  "version": "0.3.0",
+  "description": "Connect Claude Desktop to your self-hosted Garmin Coach Docker server, without editing configuration files.",
+  "long_description": "For users who run the Garmin Coach server with Docker (homelab, NAS, always-on PC). This extension connects Claude Desktop to it: enter the server address and the MCP token from your .env file, and you're done. No Node.js installation and no claude_desktop_config.json editing needed.\n\nIf you don't have a Docker server, install the 'Garmin Coach' extension instead: it runs everything inside Claude Desktop.",
+  "author": {
+    "name": "Fabio Porta",
+    "url": "https://github.com/fabio983"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fabio983/garmin-coach-mcp"
+  },
+  "homepage": "https://github.com/fabio983/garmin-coach-mcp",
+  "documentation": "https://github.com/fabio983/garmin-coach-mcp#readme",
+  "support": "https://github.com/fabio983/garmin-coach-mcp/issues",
+  "icon": "icon.png",
+  "license": "MIT",
+  "keywords": ["garmin", "running", "docker", "self-hosted"],
+  "server": {
+    "type": "node",
+    "entry_point": "node_modules/mcp-remote/dist/proxy.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/node_modules/mcp-remote/dist/proxy.js",
+        "${user_config.server_url}",
+        "--allow-http",
+        "--transport",
+        "http-only",
+        "--header",
+        "Authorization: Bearer ${user_config.mcp_token}"
+      ]
+    }
+  },
+  "user_config": {
+    "server_url": {
+      "type": "string",
+      "title": "Server address",
+      "description": "Address of your Garmin Coach server, ending in /mcp. Same computer: http://127.0.0.1:8765/mcp. Another machine: http://ITS-IP:8765/mcp",
+      "default": "http://127.0.0.1:8765/mcp",
+      "required": true
+    },
+    "mcp_token": {
+      "type": "string",
+      "title": "MCP token",
+      "description": "The value of MCP_TOKEN in the server's .env file.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"]
+  }
+}

@@ -16,8 +16,11 @@ from . import config
 
 log = logging.getLogger(__name__)
 
-KEY_HINT = ("Create a new Personal API key in Garmin Connect (Settings → Personal API), put it in "
-            "GARMIN_PERSONAL_API_KEY in .env and run `docker compose up -d`.")
+_KEY_HINT_DOCKER = ("Create a new Personal API key in Garmin Connect (Settings → Personal API), put it in "
+                    "GARMIN_PERSONAL_API_KEY in .env and run `docker compose up -d`.")
+_KEY_HINT_EXTENSION = ("Create a new Personal API key in Garmin Connect (Settings → Personal API), then in "
+                       "Claude Desktop open Settings → Extensions → Garmin Coach → Configure and paste it.")
+KEY_HINT = _KEY_HINT_EXTENSION if config.RUNTIME == "extension" else _KEY_HINT_DOCKER
 
 
 class AuthError(RuntimeError):

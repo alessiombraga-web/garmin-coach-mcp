@@ -13,17 +13,73 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import sqlite3
 import threading
 import time
+import uuid
 from datetime import date, datetime, timedelta
-
-from garminconnect import Garmin
-from garminconnect.exceptions import GarminConnectTooManyRequestsError
 
 from . import config, db, fitfile, garmin, official
 
+GarminConnectTooManyRequestsError = garmin.too_many_requests_error()
+
 log = logging.getLogger(__name__)
 _lock = threading.Lock()
+_OWNER = f"{os.getpid()}-{uuid.uuid4().hex[:8]}"
+LOCK_TTL_S = 900  # refreshed while syncing; a crashed process frees it after this
+
+
+def _lock_conn():
+    c = sqlite3.connect(config.DB_PATH, timeout=30, isolation_level=None)
+    c.execute("PRAGMA busy_timeout = 30000")
+    return c
+
+
+def _acquire_db_lock() -> bool:
+    """Take the cross-process lock (one sync at a time across all server processes)."""
+    c = _lock_conn()
+    try:
+        c.execute("BEGIN IMMEDIATE")
+        row = c.execute("SELECT owner, until FROM sync_lock WHERE id=1").fetchone()
+        if row and row[0] != _OWNER and (row[1] or 0) > time.time():
+            c.execute("ROLLBACK")
+            return False
+        c.execute("INSERT INTO sync_lock (id, owner, until) VALUES (1, ?, ?) "
+                  "ON CONFLICT(id) DO UPDATE SET owner=excluded.owner, until=excluded.until",
+                  (_OWNER, time.time() + LOCK_TTL_S))
+        c.execute("COMMIT")
+        return True
+    finally:
+        c.close()
+
+
+def _refresh_db_lock() -> None:
+    c = _lock_conn()
+    try:
+        c.execute("UPDATE sync_lock SET until=? WHERE id=1 AND owner=?", (time.time() + LOCK_TTL_S, _OWNER))
+    finally:
+        c.close()
+
+
+def _release_db_lock() -> None:
+    c = _lock_conn()
+    try:
+        c.execute("DELETE FROM sync_lock WHERE id=1 AND owner=?", (_OWNER,))
+    finally:
+        c.close()
+
+
+def sync_running_elsewhere() -> bool:
+    try:
+        c = _lock_conn()
+        try:
+            row = c.execute("SELECT owner, until FROM sync_lock WHERE id=1").fetchone()
+        finally:
+            c.close()
+    except sqlite3.Error:
+        return False
+    return bool(row and row[0] != _OWNER and (row[1] or 0) > time.time())
 
 LAP_COLS = ["lap_index", "start_time", "start_offset_s", "trigger", "intensity", "elapsed_s",
             "timer_s", "distance_m", "avg_speed", "max_speed", "gap_speed", "avg_hr", "max_hr",
@@ -84,7 +140,7 @@ def _upsert_activity(conn, row: dict) -> bool:
     return not exists
 
 
-def _gap_by_lap(g: Garmin, aid: int) -> dict[int, float]:
+def _gap_by_lap(g, aid: int) -> dict[int, float]:
     try:
         sp = g.get_activity_splits(str(aid)) or {}
     except Exception as e:  # noqa: BLE001
@@ -98,7 +154,7 @@ def _gap_by_lap(g: Garmin, aid: int) -> dict[int, float]:
     return out
 
 
-def _gear_name(g: Garmin, aid: int) -> str | None:
+def _gear_name(g, aid: int) -> str | None:
     try:
         gear = g.get_activity_gear(aid) or []
     except Exception as e:  # noqa: BLE001
@@ -118,7 +174,7 @@ def _save_fit(conn, aid: int, blob: bytes) -> None:
     store_fit(conn, aid, path)
 
 
-def load_details(conn, aid: int, oc: official.Client | None, g: Garmin | None) -> None:
+def load_details(conn, aid: int, oc: official.Client | None, g) -> None:
     """FIT + laps/records (+ planned workout from the Personal API, + GAP/shoes from the community module)."""
     if oc is not None:
         _save_fit(conn, aid, oc.download_activity(aid))
@@ -130,7 +186,7 @@ def load_details(conn, aid: int, oc: official.Client | None, g: Garmin | None) -
                          (name, json.dumps(planned, ensure_ascii=False), aid))
         time.sleep(config.REQUEST_DELAY_S)
     else:
-        _save_fit(conn, aid, g.download_activity(str(aid), dl_fmt=Garmin.ActivityDownloadFormat.ORIGINAL))
+        _save_fit(conn, aid, g.download_activity(str(aid), dl_fmt=g.ActivityDownloadFormat.ORIGINAL))
         time.sleep(config.REQUEST_DELAY_S)
 
     if g is not None:
@@ -183,6 +239,9 @@ def run(since: str | None = None, full: bool = False, redetail: bool = False) ->
     if not _lock.acquire(blocking=False):
         return {"status": "busy", "message": "A sync is already running"}
     db.init()
+    if not _acquire_db_lock():
+        _lock.release()
+        return {"status": "busy", "message": "A sync is already running in another server process"}
     conn = db.connect()
     started = _now()
     mode = "full" if full else ("since " + since if since else "incremental")
@@ -210,7 +269,7 @@ def run(since: str | None = None, full: bool = False, redetail: bool = False) ->
         if config.ENABLE_GARMINCONNECT and g is None:
             try:
                 g = garmin.client()
-            except garmin.AuthRequired as e:
+            except (garmin.AuthRequired, garmin.Disabled) as e:
                 notes.append(f"community module not logged in, no GAP/shoes ({e})")
                 log.warning("Community module unavailable: %s", e)
 
@@ -231,6 +290,7 @@ def run(since: str | None = None, full: bool = False, redetail: bool = False) ->
         for r in todo:
             if not config.wants_details(r["type_key"]):
                 continue
+            _refresh_db_lock()
             try:
                 load_details(conn, r["activity_id"], oc, g)
                 conn.commit()
@@ -253,8 +313,12 @@ def run(since: str | None = None, full: bool = False, redetail: bool = False) ->
     except (GarminConnectTooManyRequestsError, official.RateLimited) as e:
         status, msg = "rate_limited", f"Rate limited by Garmin (429): try again later. {e}"
     except Exception as e:  # noqa: BLE001
-        status, msg = "error", f"{type(e).__name__}: {e}"
-        log.exception("Sync failed")
+        if type(e).__name__ in ("ConnectionError", "ProxyError", "Timeout", "ConnectTimeout", "ReadTimeout"):
+            status, msg = "network_error", f"Could not reach Garmin (check the internet connection): {e}"
+            log.warning("Sync: network error: %s", e)
+        else:
+            status, msg = "error", f"{type(e).__name__}: {e}"
+            log.exception("Sync failed")
     finally:
         if g is not None:
             garmin.persist(g)
@@ -265,6 +329,7 @@ def run(since: str | None = None, full: bool = False, redetail: bool = False) ->
             "VALUES (?,?,?,?,?,?,?)", (started, _now(), mode, new, detailed, status, msg))
         conn.commit()
         conn.close()
+        _release_db_lock()
         _lock.release()
     return {"status": status, "mode": mode, "source": source, "new_activities": new, "new_ids": new_ids,
             "detailed": detailed, "message": msg}

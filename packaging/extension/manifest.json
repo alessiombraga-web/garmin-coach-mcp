@@ -1,0 +1,83 @@
+{
+  "manifest_version": "0.4",
+  "name": "garmin-coach",
+  "display_name": "Garmin Coach",
+  "version": "0.3.0",
+  "description": "Let Claude read your Garmin running data: runs, laps, heart rate, running dynamics, weekly trends.",
+  "long_description": "Garmin Coach keeps a private archive of your Garmin Connect activities on your computer (original FIT files, laps and second-by-second data) and lets Claude analyse them: single runs, intervals, cardiac drift, weekly volume and intensity, long-term trends.\n\nData is read through Garmin's official Connect Personal API, which is read-only: this extension never writes anything to your Garmin account. You only need a Personal API key, created in Garmin Connect under Settings → Personal API.\n\nYour data stays on your computer, in the folder you choose.",
+  "author": {
+    "name": "Fabio Porta",
+    "url": "https://github.com/fabio983"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fabio983/garmin-coach-mcp"
+  },
+  "homepage": "https://github.com/fabio983/garmin-coach-mcp",
+  "documentation": "https://github.com/fabio983/garmin-coach-mcp#readme",
+  "support": "https://github.com/fabio983/garmin-coach-mcp/issues",
+  "icon": "icon.png",
+  "license": "MIT",
+  "keywords": ["garmin", "running", "fitness", "training", "fit", "heart rate"],
+  "server": {
+    "type": "uv",
+    "entry_point": "src/server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "src/server.py"],
+      "env": {
+        "GC_RUNTIME": "extension",
+        "GARMIN_PERSONAL_API_KEY": "${user_config.garmin_api_key}",
+        "GC_DATA_PARENT": "${user_config.data_folder}",
+        "BACKFILL_FROM": "${user_config.backfill_from}",
+        "HR_BANDS": "${user_config.hr_bands}"
+      }
+    }
+  },
+  "user_config": {
+    "garmin_api_key": {
+      "type": "string",
+      "title": "Garmin Personal API key",
+      "description": "Create it in Garmin Connect on the web: Settings → Personal API (connect.garmin.com/app/settings/personalApiToken). Read-only access.",
+      "sensitive": true,
+      "required": true
+    },
+    "data_folder": {
+      "type": "directory",
+      "title": "Data folder",
+      "description": "Where your archive is stored. A 'Garmin Coach' folder is created inside it.",
+      "default": "${DOCUMENTS}",
+      "required": false
+    },
+    "backfill_from": {
+      "type": "string",
+      "title": "Import runs from (YYYY-MM-DD)",
+      "description": "First import: activities from this date on. Older ones can be imported later by asking Claude.",
+      "default": "2024-01-01",
+      "required": false
+    },
+    "hr_bands": {
+      "type": "string",
+      "title": "Heart-rate bands (optional)",
+      "description": "Lower bound in bpm of each band after the first, comma separated. Example: 135,150,160,170.",
+      "default": "135,150,160,170",
+      "required": false
+    }
+  },
+  "tools": [
+    {"name": "sync_garmin", "description": "Fetch new activities from Garmin Connect"},
+    {"name": "sync_status", "description": "Archive status and latest syncs"},
+    {"name": "list_activities", "description": "Activities in a date range"},
+    {"name": "get_activity", "description": "Summary, laps, heart-rate bands, recovery, planned workout"},
+    {"name": "get_activity_series", "description": "Second-by-second data at any resolution"},
+    {"name": "training_summary", "description": "Weekly volume, long run, load, intensity"},
+    {"name": "annotate_activity", "description": "Save real temperature, treadmill, shoes, RPE, notes"},
+    {"name": "get_athlete_notes", "description": "Read your saved notes (zones, sensors, shoes)"},
+    {"name": "update_athlete_notes", "description": "Save notes about you for future chats"},
+    {"name": "query_sql", "description": "Read-only SQL on your archive"}
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "win32"],
+    "runtimes": {"python": ">=3.12,<3.14"}
+  }
+}

@@ -28,12 +28,19 @@ Installed automatically by the packages above.
 | [Pydantic](https://github.com/pydantic/pydantic) | MCP Python SDK | MIT |
 | [Starlette](https://github.com/encode/starlette) | MCP Python SDK | BSD-3-Clause |
 
-## Used on the client side (not bundled)
+## Bundled in the Docker connector extension (`garmin-coach-docker-connector-*.mcpb`)
 
 | Project | Used for | License |
 |---|---|---|
-| [mcp-remote](https://github.com/geelen/mcp-remote) by Glen Maddern (geelen) | Bridge between Claude Desktop and the remote MCP server (run via `npx`) | MIT |
-| [Node.js](https://nodejs.org) | Runtime for `npx` / mcp-remote | MIT |
+| [mcp-remote](https://github.com/geelen/mcp-remote) by Glen Maddern (geelen), and its npm dependencies | Bridge between Claude Desktop and the Docker server | MIT (dependencies: see the license files included in `node_modules/` inside the bundle) |
+
+## Used at build time or by the host application (not bundled)
+
+| Project | Used for | License |
+|---|---|---|
+| [MCPB](https://github.com/modelcontextprotocol/mcpb) (`@anthropic-ai/mcpb`) by Anthropic, PBC | Packaging of the Claude Desktop extensions | MIT |
+| [uv](https://github.com/astral-sh/uv) by Astral | Installs Python and the dependencies of the extension (managed by Claude Desktop) | MIT / Apache-2.0 |
+| [Node.js](https://nodejs.org) | Runtime for the connector extension (included in Claude Desktop) and the manual mcp-remote setup | MIT |
 
 ## Runtime
 

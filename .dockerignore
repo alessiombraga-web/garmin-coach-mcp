@@ -6,3 +6,8 @@ docs
 .git
 __pycache__
 *.md
+packaging
+scripts
+build
+dist
+.github

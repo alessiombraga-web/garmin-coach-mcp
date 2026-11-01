@@ -104,6 +104,13 @@ CREATE TABLE IF NOT EXISTS annotations (
     updated_at      TEXT
 );
 
+-- Cross-process sync lock (Claude Desktop may start several server processes)
+CREATE TABLE IF NOT EXISTS sync_lock (
+    id              INTEGER PRIMARY KEY CHECK (id = 1),
+    owner           TEXT,
+    until           REAL
+);
+
 CREATE TABLE IF NOT EXISTS sync_log (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     started_at      TEXT,

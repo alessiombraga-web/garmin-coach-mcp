@@ -8,7 +8,19 @@ def _env(name: str, default: str) -> str:
     return v if v not in (None, "") else default
 
 
-DATA_DIR = Path(_env("DATA_DIR", "/data"))
+# Runtime: "docker" (HTTP server, default) or "extension" (Claude Desktop extension, stdio)
+RUNTIME = _env("GC_RUNTIME", "docker")
+
+# Data folder. The desktop extension passes the folder chosen by the user (GC_DATA_PARENT) and the
+# archive lives in a "Garmin Coach" subfolder; Docker uses DATA_DIR (/data, mounted from ./data).
+_DATA_PARENT = os.getenv("GC_DATA_PARENT")
+if _DATA_PARENT:
+    DATA_DIR = Path(_DATA_PARENT).expanduser() / "Garmin Coach"
+elif RUNTIME == "extension":
+    _docs = Path.home() / "Documents"
+    DATA_DIR = (_docs if _docs.is_dir() else Path.home()) / "Garmin Coach"
+else:
+    DATA_DIR = Path(_env("DATA_DIR", "/data"))
 DB_PATH = DATA_DIR / "garmin.db"
 FIT_DIR = DATA_DIR / "fit"
 TOKEN_DIR = DATA_DIR / "tokens"
@@ -55,7 +67,7 @@ HR_BANDS = [int(x) for x in _env("HR_BANDS", "135,150,160,170").split(",")]
 
 MCP_HOST = _env("MCP_HOST", "0.0.0.0")
 MCP_PORT = int(_env("MCP_PORT", "8765"))
-MCP_TOKEN = os.getenv("MCP_TOKEN") or None
+MCP_TOKEN = (os.getenv("MCP_TOKEN") or "").strip().strip('"').strip("'") or None
 
 
 def wants_details(type_key: str | None) -> bool:
