@@ -86,10 +86,23 @@ Non può modificare né cancellare niente sul tuo account Garmin.
 2. Si apre la finestra di installazione di **Garmin Coach**. Clicca su **Installa**.
 3. Ti chiede le impostazioni:
    - **Garmin Personal API key**: incolla la chiave che hai copiato al passo 2;
+   - **Import runs from (YYYY-MM-DD)**: è la data da cui Garmin Coach scarica le tue corse la prima volta.
+     Di base è `2024-01-01`; se vuoi puoi cambiarla, scrivendola nel formato anno-mese-giorno (per esempio
+     `2022-06-01`). Leggi la nota qui sotto prima di scegliere;
    - lascia tutto il resto com'è.
 4. Conferma e controlla che l'estensione sia **attiva**, con l'interruttore acceso.
 
 Fatto. La prima volta Claude può impiegare qualche secondo in più a partire, perché prepara da solo quello che gli serve.
+
+> 📅 **Nota sulla data di partenza**
+>
+> - **Più la data è lontana, più tempo serve la prima volta.** Ogni corsa richiede qualche secondo: con un paio di
+>   anni di corse ci vogliono alcuni minuti, con molti anni anche mezz'ora o più, sempre con Claude aperto.
+>   Se vuoi partire subito, scegli una data recente: le corse più vecchie le puoi aggiungere quando vuoi.
+> - **La data conta solo per la prima importazione.** Se dopo l'installazione la cambi nelle impostazioni
+>   dell'estensione non succede niente, perché da lì in poi Garmin Coach scarica solo le corse nuove.
+>   Per aggiungere corse più vecchie chiedi direttamente a Claude, per esempio:
+>   *"Sincronizza le mie corse dal 2019"*. Le scarica in sottofondo mentre continui a usare Claude.
 
 ---
 
@@ -102,7 +115,7 @@ Apri una **nuova chat** in Claude e scrivi:
 Claude ti chiederà il permesso di usare Garmin Coach: rispondi di sì. Puoi anche scegliere di dargli il permesso
 una volta per tutte.
 
-La prima volta Garmin Coach scarica **tutte le tue corse dal 1° gennaio 2024**. Ci vuole qualche minuto, e continua
+La prima volta Garmin Coach scarica **tutte le tue corse dalla data scelta al passo 4** (di base il 1° gennaio 2024). Ci vuole qualche minuto, e continua
 da solo finché Claude resta aperto. Puoi già fare domande mentre lavora. Per sapere a che punto è chiedi:
 
 > **A che punto è l'archivio Garmin?**
@@ -173,8 +186,9 @@ misurano.
 Sì, dopo il periodo che hai scelto. Garmin ti manda un'email circa una settimana prima. Per rinnovarla crea una
 nuova chiave (passo 2), poi in Claude apri **Impostazioni → Estensioni → Garmin Coach**, incolla la nuova chiave e salva.
 
-**Posso importare anche le corse prima del 2024?**
-Sì, chiedi a Claude: *"Sincronizza le mie corse dal 2019"*.
+**Posso importare anche le corse più vecchie?**
+Sì, in qualsiasi momento: chiedi a Claude *"Sincronizza le mie corse dal 2019"*. Cambiare la data nelle impostazioni
+dell'estensione dopo l'installazione invece non serve: vale solo per la prima importazione.
 
 **Come lo aggiorno quando esce una nuova versione?**
 Scarica il nuovo file `.mcpb` (passo 3) e aprilo come la prima volta. Archivio e note restano dove sono.
