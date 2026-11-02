@@ -76,7 +76,7 @@ def test_official_read_only(tmp_path, monkeypatch):
     sync = _reload(tmp_path, monkeypatch, GARMIN_PERSONAL_API_KEY="k")
     res = sync.run()
     assert res["status"] == "ok" and res["source"] == "official"
-    assert res["new_activities"] == 2 and res["detailed"] == 1  # strength: summary only
+    assert res["new_activities"] == 2 and res["detailed"] == 2  # all sports get FIT/laps by default
     c = sqlite3.connect(tmp_path / "garmin.db")
     assert c.execute("select planned_workout, source, gear from activities where activity_id=1").fetchone() \
         == ("Easy 45'", "official", None)

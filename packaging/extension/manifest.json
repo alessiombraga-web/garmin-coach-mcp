@@ -2,9 +2,9 @@
   "manifest_version": "0.4",
   "name": "garmin-coach",
   "display_name": "Garmin Coach",
-  "version": "0.3.0",
-  "description": "Let Claude read your Garmin running data: runs, laps, heart rate, running dynamics, weekly trends.",
-  "long_description": "Garmin Coach keeps a private archive of your Garmin Connect activities on your computer (original FIT files, laps and second-by-second data) and lets Claude analyse them: single runs, intervals, cardiac drift, weekly volume and intensity, long-term trends.\n\nData is read through Garmin's official Connect Personal API, which is read-only: this extension never writes anything to your Garmin account. You only need a Personal API key, created in Garmin Connect under Settings → Personal API.\n\nYour data stays on your computer, in the folder you choose.",
+  "version": "0.3.1",
+  "description": "Let Claude read your Garmin activities: runs, rides, swims, laps, heart rate, running dynamics, weekly trends.",
+  "long_description": "Garmin Coach keeps a private archive of your Garmin Connect activities on your computer (original FIT files, laps and second-by-second data) and lets Claude analyse them: single runs or rides, intervals, cardiac drift, weekly volume and intensity, long-term trends. Works with every sport recorded on Garmin.\n\nData is read through Garmin's official Connect Personal API, which is read-only: this extension never writes anything to your Garmin account. You only need a Personal API key, created in Garmin Connect under Settings → Personal API.\n\nYour data stays on your computer, in the folder you choose.",
   "author": {
     "name": "Fabio Porta",
     "url": "https://github.com/fabio983"
@@ -18,7 +18,7 @@
   "support": "https://github.com/fabio983/garmin-coach-mcp/issues",
   "icon": "icon.png",
   "license": "MIT",
-  "keywords": ["garmin", "running", "fitness", "training", "fit", "heart rate"],
+  "keywords": ["garmin", "running", "cycling", "fitness", "training", "fit", "heart rate"],
   "server": {
     "type": "uv",
     "entry_point": "src/server.py",

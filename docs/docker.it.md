@@ -198,7 +198,7 @@ Tutte le impostazioni stanno in `.env` (vedi [`.env.example`](../.env.example)).
 | `SYNC_INTERVAL_MIN` | `30` | Intervallo del sync automatico (0 = solo su richiesta) |
 | `REQUEST_DELAY_S` | `1.5` | Pausa tra le chiamate a Garmin |
 | `HR_BANDS` | `135,150,160,170` | Soglie inferiori delle fasce FC 2..N |
-| `DETAIL_TYPE_MATCH` | `run` | Tipi di attività per cui scaricare FIT/lap/record |
+| `DETAIL_TYPE_MATCH` | `all` | Tipi di attività per cui scaricare FIT/lap/record (`all` = tutte, oppure es. `run,cycling`) |
 | `ATHLETE_FILE` | `/data/athlete.md` | Note su di te |
 | `MCP_PORT` | `8765` | Porta nel container |
 

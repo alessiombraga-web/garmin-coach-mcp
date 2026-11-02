@@ -31,13 +31,21 @@ def _v(msg: fitdecode.FitDataMessage, *names):
     return None
 
 
-def _cad(msg, base: str, frac: str):
-    """FIT running cadence is strides/min (+ fraction): convert to steps/min."""
-    c = _v(msg, base)
+# Sports whose FIT cadence is in strides/min (one leg): shown as steps/min (x2).
+# Cycling and other sports keep the FIT value as is (rpm).
+STEP_SPORTS = {"running", "walking", "hiking", "training", "generic", "trail_running"}
+
+
+def _cad(msg, bases: tuple[str, ...], frac: str):
+    """Raw FIT cadence (+ fraction), unit as recorded by the device."""
+    c = _v(msg, *bases)
     if c is None:
         return None
-    f = _v(msg, frac) or 0.0
-    return round((c + f) * 2, 1)
+    return c + (_v(msg, frac) or 0.0)
+
+
+def _scale(x, k):
+    return None if x is None else round(x * k, 1)
 
 
 def _mul(x, k, nd=2):
@@ -60,9 +68,7 @@ def parse(path: Path | str) -> dict:
                     t0 = ts
                 t = int((ts - t0).total_seconds())
                 lat, lon = _v(frame, "position_lat"), _v(frame, "position_long")
-                cad = _v(frame, "cadence")
-                if cad is not None:
-                    cad = round((cad + (_v(frame, "fractional_cadence") or 0)) * 2, 1)
+                cad = _cad(frame, ("cadence",), "fractional_cadence")
                 records[t] = dict(
                     t_s=t,
                     distance_m=_v(frame, "distance"),
@@ -82,9 +88,11 @@ def parse(path: Path | str) -> dict:
                 )
             elif name == "lap":
                 laps.append(frame)
-            elif name == "session" and not session:
+            elif name == "sport" and "sport" not in session:
+                session["sport"] = _v(frame, "sport")
+            elif name == "session" and not session.get("start_time"):
                 session = {
-                    "sport": _v(frame, "sport"),
+                    "sport": _v(frame, "sport") or session.get("sport"),
                     "sub_sport": _v(frame, "sub_sport"),
                     "start_time": _v(frame, "start_time"),
                 }
@@ -106,8 +114,8 @@ def parse(path: Path | str) -> dict:
             max_speed=_v(m, "enhanced_max_speed", "max_speed"),
             avg_hr=_v(m, "avg_heart_rate"),
             max_hr=_v(m, "max_heart_rate"),
-            avg_cadence=_cad(m, "avg_running_cadence", "avg_fractional_cadence"),
-            max_cadence=_cad(m, "max_running_cadence", "max_fractional_cadence"),
+            avg_cadence=_cad(m, ("avg_running_cadence", "avg_cadence"), "avg_fractional_cadence"),
+            max_cadence=_cad(m, ("max_running_cadence", "max_cadence"), "max_fractional_cadence"),
             avg_power=_v(m, "avg_power"),
             max_power=_v(m, "max_power"),
             gct_ms=_v(m, "avg_stance_time"),
@@ -120,4 +128,12 @@ def parse(path: Path | str) -> dict:
             calories=_v(m, "total_calories"),
             avg_temp=_v(m, "avg_temperature"),
         ))
-    return {"session": session, "laps": lap_rows, "records": list(records.values())}
+    sport = str(session.get("sport") or (laps and _v(laps[0], "sport")) or "running")
+    k = 2 if sport in STEP_SPORTS else 1
+    for row in lap_rows:
+        row["avg_cadence"], row["max_cadence"] = _scale(row["avg_cadence"], k), _scale(row["max_cadence"], k)
+    recs = list(records.values())
+    for r in recs:
+        r["cadence"] = _scale(r["cadence"], k)
+    session["sport"] = sport
+    return {"session": session, "laps": lap_rows, "records": recs}

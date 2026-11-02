@@ -6,6 +6,9 @@
 second-by-second data from the original FIT files) and lets [Claude Desktop](https://claude.ai/download)
 analyse it through the [Model Context Protocol](https://modelcontextprotocol.io).
 
+It works with every sport recorded on Garmin (running, cycling, swimming, walking...); some features, such as
+running dynamics, heart-rate recovery and treadmill handling, are running-specific.
+
 Data is read through Garmin's **official [Connect Personal API](https://developer.garmin.com/gc-developer-program/personal/personal-api)**,
 which is **read-only**. Writing workouts to Garmin is optional and available only in the Docker version
 (see [Write access](#write-access-optional-docker-only)).
@@ -266,7 +269,7 @@ All settings live in `.env` (see [`.env.example`](.env.example)). After changing
 | `SYNC_INTERVAL_MIN` | `30` | Background sync interval (0 = on demand only) |
 | `REQUEST_DELAY_S` | `1.5` | Pause between Garmin requests |
 | `HR_BANDS` | `135,150,160,170` | Lower bounds of HR bands 2..N for time-in-zone |
-| `DETAIL_TYPE_MATCH` | `run` | Activity types (substring of Garmin `typeKey`) for which FIT/laps/records are downloaded |
+| `DETAIL_TYPE_MATCH` | `all` | Activity types (substring of Garmin `typeKey`, e.g. `run,cycling`) for which FIT/laps/records are downloaded; `all` = every activity |
 | `ATHLETE_FILE` | `/data/athlete.md` | Notes about you |
 | `MCP_PORT` | `8765` | Port inside the container |
 

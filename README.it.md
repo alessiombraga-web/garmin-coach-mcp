@@ -13,6 +13,9 @@ Con Garmin Coach puoi chiedere a Claude, con parole tue, cose come:
 Claude legge i dati direttamente dal tuo account Garmin: passo, frequenza cardiaca, cadenza, lap, dinamiche di
 corsa. Non devi più esportare file o fare screenshot.
 
+Non solo corsa: funziona con **tutte le attività registrate su Garmin**, per esempio bici, nuoto o camminata
+(*"Com'è andata l'uscita in bici di domenica?"*).
+
 Ci vogliono **circa 10 minuti** e **non serve essere esperti di computer**: niente comandi, niente programmi strani.
 
 🇬🇧 [English documentation](README.md) · 🛠️ [Guida avanzata con Docker](docs/docker.it.md)
@@ -178,9 +181,14 @@ Con questa versione no, perché l'API ufficiale di Garmin non permette di scrive
 [versione avanzata](docs/docker.it.md), che però richiede competenze tecniche.
 
 **Funziona con tutti gli orologi Garmin?**
-Funziona con qualsiasi orologio che sincronizza le corse su Garmin Connect. I dati disponibili dipendono
-dall'orologio e dai sensori: le dinamiche di corsa, per esempio, ci sono solo con gli orologi e le fasce che le
-misurano.
+Funziona con qualsiasi orologio o ciclocomputer che sincronizza le attività su Garmin Connect. I dati disponibili
+dipendono dal dispositivo e dai sensori: le dinamiche di corsa, per esempio, ci sono solo con gli orologi e le fasce
+che le misurano; la cadenza e la potenza in bici solo con i relativi sensori.
+
+**Funziona anche per la bici, il nuoto o altri sport?**
+Sì: Garmin Coach scarica lap e dati secondo per secondo di tutte le attività. Con le versioni precedenti alla 0.3.1
+venivano scaricati solo per le corse: se hai installato una versione precedente, aggiorna (vedi sotto) e alla
+sincronizzazione successiva Garmin Coach completa da solo anche le altre attività già in archivio.
 
 **La chiave scade?**
 Sì, dopo il periodo che hai scelto. Garmin ti manda un'email circa una settimana prima. Per rinnovarla crea una

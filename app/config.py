@@ -58,8 +58,9 @@ BACKFILL_FROM = _env("BACKFILL_FROM", "2024-01-01")
 SYNC_INTERVAL_MIN = int(_env("SYNC_INTERVAL_MIN", "30"))
 # Pause between Garmin requests, to stay below rate limits
 REQUEST_DELAY_S = float(_env("REQUEST_DELAY_S", "1.5"))
-# Activity types (substring of Garmin typeKey) for which FIT, laps and records are downloaded
-DETAIL_TYPE_MATCH = [s.strip() for s in _env("DETAIL_TYPE_MATCH", "run").split(",") if s.strip()]
+# Activity types (substring of Garmin typeKey) for which FIT, laps and records are downloaded.
+# "all" (default) = every activity; e.g. "run,cycling" to limit it.
+DETAIL_TYPE_MATCH = [s.strip() for s in _env("DETAIL_TYPE_MATCH", "all").split(",") if s.strip()]
 
 # Heart-rate bands for time-in-zone: lower bound (bpm) of bands 2..N.
 # Placeholder defaults: set your own in .env
@@ -71,5 +72,7 @@ MCP_TOKEN = (os.getenv("MCP_TOKEN") or "").strip().strip('"').strip("'") or None
 
 
 def wants_details(type_key: str | None) -> bool:
+    if any(m.lower() in ("all", "*") for m in DETAIL_TYPE_MATCH):
+        return True
     t = (type_key or "").lower()
     return any(m.lower() in t for m in DETAIL_TYPE_MATCH)

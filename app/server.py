@@ -18,7 +18,8 @@ from . import config, db, garmin, sync, workouts
 log = logging.getLogger(__name__)
 
 BASE_INSTRUCTIONS = """\
-Running data from the athlete's Garmin Connect account, archived locally (SQLite + original FIT files).
+Activities from the athlete's Garmin Connect account (running, cycling, swimming and any other sport),
+archived locally (SQLite + original FIT files with laps and per-second data).
 Data is read through the official Garmin Connect Personal API, which is READ-ONLY.
 Writing to Garmin (structured workouts) requires the optional community module (ENABLE_GARMINCONNECT);
 when it is disabled the workout tools explain how to enable it.
@@ -35,7 +36,12 @@ when it is disabled the workout tools explain how to enable it.
 - Athlete notes: when the athlete tells you lasting facts useful for analysis (max HR, zones, sensors,
   shoes, injuries to keep in mind, goals), offer to save them with `update_athlete_notes`; read them
   with `get_athlete_notes`. They are also appended below at server start.
-- Units: pace min:ss/km, cadence steps/min, vertical oscillation cm, ground-contact balance left%/right%.
+- Several tools take type_filter (substring of the Garmin activity type: 'run', 'cycling', 'swim'...):
+  use it to pick the right sport, e.g. get_activity('latest', type_filter='cycling').
+- If an activity has no laps/per-second data, report the reason given by get_activity: the official
+  API does provide the original FIT file for every activity.
+- Units: pace min:ss/km, speed km/h, cadence steps/min for running/walking and rpm for cycling,
+  vertical oscillation cm, ground-contact balance left%/right%.
 """
 
 
@@ -97,19 +103,27 @@ def ro():
         conn.close()
 
 
-def _resolve_id(conn, activity_id: str) -> int | None:
+def _resolve_id(conn, activity_id: str, type_filter: str = "") -> int | None:
+    """Garmin id, 'latest' or a date; with 'latest'/date the newest activity whose type_key contains
+    type_filter ('' = any sport, e.g. 'run', 'cycling', 'swim')."""
     a = str(activity_id).strip().lower()
+    like = f"%{(type_filter or '').strip().lower()}%"
     if a in ("latest", "last", ""):
         row = conn.execute(
-            "SELECT activity_id FROM activities WHERE type_key LIKE '%run%' "
-            "ORDER BY start_local DESC LIMIT 1").fetchone()
+            "SELECT activity_id FROM activities WHERE coalesce(type_key,'') LIKE ? "
+            "ORDER BY start_local DESC LIMIT 1", (like,)).fetchone()
         return row["activity_id"] if row else None
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", a):
         row = conn.execute(
             "SELECT activity_id FROM activities WHERE substr(start_local,1,10)=? "
-            "AND type_key LIKE '%run%' ORDER BY start_local DESC LIMIT 1", (a,)).fetchone()
+            "AND coalesce(type_key,'') LIKE ? ORDER BY start_local DESC LIMIT 1", (a, like)).fetchone()
         return row["activity_id"] if row else None
     return int(a) if a.isdigit() else None
+
+
+def _is_step_sport(type_key: str | None) -> bool:
+    t = (type_key or "").lower()
+    return any(k in t for k in ("run", "walk", "hik"))
 
 
 def _is_treadmill(act, ann) -> bool:
@@ -228,9 +242,9 @@ def sync_status() -> str:
 
 @mcp.tool()
 def list_activities(start_date: str | None = None, end_date: str | None = None,
-                    type_filter: str = "run", limit: int = 60) -> str:
-    """List activities (CSV). Default: last 30 days, runs only.
-    type_filter: substring of type_key ('run', 'treadmill', 'strength', '' = all)."""
+                    type_filter: str = "", limit: int = 60) -> str:
+    """List activities (CSV). Default: last 30 days, all sports.
+    type_filter: substring of type_key ('run', 'cycling', 'swim', 'treadmill', 'strength', '' = all)."""
     end_date = end_date or date.today().isoformat()
     start_date = start_date or (date.fromisoformat(end_date) - timedelta(days=30)).isoformat()
     with ro() as conn:
@@ -254,11 +268,13 @@ def list_activities(start_date: str | None = None, end_date: str | None = None,
 
 
 @mcp.tool()
-def get_activity(activity_id: str = "latest", include_laps: bool = True) -> str:
+def get_activity(activity_id: str = "latest", include_laps: bool = True, type_filter: str = "") -> str:
     """Summary + laps (like Garmin's per-lap CSV export) + HRR60 + time in HR bands + annotations.
-    activity_id: Garmin id, 'latest' (latest run) or a date 'YYYY-MM-DD'."""
+    Works for any sport (running, cycling, swimming...).
+    activity_id: Garmin id, 'latest' or a date 'YYYY-MM-DD'. With 'latest' or a date, type_filter picks
+    the sport (substring of type_key: 'run', 'cycling', 'swim'...; '' = any)."""
     with ro() as conn:
-        aid = _resolve_id(conn, activity_id)
+        aid = _resolve_id(conn, activity_id, type_filter)
         act = conn.execute("SELECT * FROM activities WHERE activity_id=?", (aid,)).fetchone() if aid else None
         if not act:
             return "Activity not found. Try sync_garmin or list_activities."
@@ -290,7 +306,14 @@ def get_activity(activity_id: str = "latest", include_laps: bool = True) -> str:
             out.append("TREADMILL: ignore pace, distance, stride length, vertical ratio, power. "
                        "Reliable: HR, cadence, vertical oscillation, belt speed reported by the athlete.")
         if act["has_details"] != 1:
-            out.append("(laps/records not available: FIT file not downloaded)")
+            why = {0: "not downloaded yet (pending: run sync_garmin)",
+                   -1: "the download failed for this activity (retry with sync_garmin redetail=true)"}
+            reason = why.get(act["has_details"], "not downloaded")
+            if act["has_details"] == 0 and not config.wants_details(act["type_key"]):
+                reason = (f"activity type '{act['type_key']}' is excluded by the DETAIL_TYPE_MATCH setting "
+                          f"({','.join(config.DETAIL_TYPE_MATCH)})")
+            out.append(f"(laps and per-second data: {reason}. This is a setting of this archive, not a "
+                       f"limit of the Garmin API, which provides the original FIT file for every activity.)")
         else:
             hrr = _hrr(conn, aid, laps)
             if hrr:
@@ -301,7 +324,8 @@ def get_activity(activity_id: str = "latest", include_laps: bool = True) -> str:
             out.append("time in HR bands: " + " | ".join(
                 f"{lab}: {hms(s)} ({round(100 * s / tot)}%)" for lab, s in zip(_band_labels(), secs)))
         if include_laps and laps:
-            header = ["lap", "trigger", "time", "km", "pace", "gap", "hr_avg", "hr_max", "cad",
+            cad_unit = "spm" if _is_step_sport(act["type_key"]) else "rpm"
+            header = ["lap", "trigger", "time", "km", "pace", "kmh", "gap", "hr_avg", "hr_max", f"cad_{cad_unit}",
                       "cad_max", "gct_ms", "bal_L/R", "vo_cm", "vr_%", "step_m", "watt",
                       "asc", "desc", "watch_temp"]
             data = []
@@ -310,7 +334,8 @@ def get_activity(activity_id: str = "latest", include_laps: bool = True) -> str:
                        if l["gct_bal_left"] else "")
                 data.append([l["lap_index"], l["trigger"], hms(l["timer_s"]),
                              r1((l["distance_m"] or 0) / 1000, 2), pace(l["avg_speed"]),
-                             pace(l["gap_speed"]), r1(l["avg_hr"], 0), r1(l["max_hr"], 0),
+                             r1((l["avg_speed"] or 0) * 3.6), pace(l["gap_speed"]),
+                             r1(l["avg_hr"], 0), r1(l["max_hr"], 0),
                              r1(l["avg_cadence"], 0), r1(l["max_cadence"], 0), r1(l["gct_ms"], 0),
                              bal, r1(l["vo_cm"]), r1(l["vratio"]), r1(l["step_len_m"], 2),
                              r1(l["avg_power"], 0), r1(l["ascent_m"], 0), r1(l["descent_m"], 0),
@@ -322,12 +347,12 @@ def get_activity(activity_id: str = "latest", include_laps: bool = True) -> str:
 
 @mcp.tool()
 def get_activity_series(activity_id: str = "latest", every_s: int = 30,
-                        from_s: int | None = None, to_s: int | None = None) -> str:
+                        from_s: int | None = None, to_s: int | None = None, type_filter: str = "") -> str:
     """Downsampled time series (averages over every_s-second windows) from the FIT records.
     Useful for cardiac drift, blow-ups, intervals, analysis inside a lap. from_s/to_s = seconds from start."""
     every_s = max(1, int(every_s))
     with ro() as conn:
-        aid = _resolve_id(conn, activity_id)
+        aid = _resolve_id(conn, activity_id, type_filter)
         if not aid:
             return "Activity not found."
         q = "SELECT * FROM records WHERE activity_id=?"
@@ -362,9 +387,10 @@ def get_activity_series(activity_id: str = "latest", every_s: int = 30,
 
 
 @mcp.tool()
-def training_summary(weeks: int = 12, end_date: str | None = None) -> str:
-    """Weekly running summary (Mon-Sun weeks): runs, km, time, average pace, longest run,
-    training load and time distribution across the HR bands (HR_BANDS)."""
+def training_summary(weeks: int = 12, end_date: str | None = None, type_filter: str = "run") -> str:
+    """Weekly summary (Mon-Sun weeks) for one sport: sessions, km, time, average pace, longest session,
+    training load and time distribution across the HR bands (HR_BANDS).
+    type_filter: substring of type_key ('run' default, 'cycling', 'swim', '' = all sports together)."""
     end = date.fromisoformat(end_date) if end_date else date.today()
     end_monday = end - timedelta(days=end.weekday())
     start = end_monday - timedelta(weeks=weeks - 1)
@@ -372,8 +398,8 @@ def training_summary(weeks: int = 12, end_date: str | None = None) -> str:
     with ro() as conn:
         acts = conn.execute(
             "SELECT a.*, n.treadmill tm FROM activities a LEFT JOIN annotations n USING(activity_id) "
-            "WHERE type_key LIKE '%run%' AND substr(start_local,1,10) BETWEEN ? AND ? "
-            "ORDER BY start_local", (start.isoformat(), end.isoformat())).fetchall()
+            "WHERE coalesce(type_key,'') LIKE ? AND substr(start_local,1,10) BETWEEN ? AND ? "
+            "ORDER BY start_local", (f"%{type_filter}%", start.isoformat(), end.isoformat())).fetchall()
         weeks_d: dict = {}
         for a in acts:
             d = date.fromisoformat(a["start_local"][:10])
@@ -391,7 +417,7 @@ def training_summary(weeks: int = 12, end_date: str | None = None) -> str:
             if a["has_details"] == 1:
                 for i, s in enumerate(_hr_band_seconds(conn, a["activity_id"])):
                     w["bands"][i] += s
-    header = ["week", "runs", "treadmill", "km", "time", "avg_pace", "longest_km", "load"] + \
+    header = ["week", "sessions", "treadmill", "km", "time", "avg_pace", "longest_km", "load"] + \
              [f"hr {lab}" for lab in labels]
     data = []
     wk = start

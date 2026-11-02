@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.1 — 2026-11-02
+
+**All sports, not just running.**
+
+- Laps and per-second data are now downloaded for every activity type (cycling, swimming, walking...),
+  not only runs (`DETAIL_TYPE_MATCH` default changed from `run` to `all`). After updating, activities already in
+  the archive without details are completed automatically at the next sync.
+- Cadence keeps the right unit per sport: steps/min for running and walking, rpm for cycling (it was doubled).
+- `get_activity`, `get_activity_series` and `training_summary` accept `type_filter` ('run', 'cycling', 'swim'...);
+  `get_activity('latest')` now means the latest activity of any sport; laps also show speed in km/h.
+- When an activity has no laps/per-second data, `get_activity` states the real reason, so Claude no longer
+  blames the Garmin API (which provides the FIT file for every activity).
+
 ## 0.3.0 — 2026-11-01
 
 **Install without Docker: Garmin Coach is now also a Claude Desktop extension.**

@@ -54,6 +54,7 @@ Installed automatically by the packages above.
 | File | Source | License |
 |---|---|---|
 | `tests/sample_run.fit` | `garmin-fenix-5-run.fit` from the [fitdecode](https://github.com/polyvertex/fitdecode) test suite | MIT |
+| `tests/sample_ride.fit` | `garmin-edge-820-bike.fit` from the [fitdecode](https://github.com/polyvertex/fitdecode) test suite | MIT |
 
 ## Trademarks
 
