@@ -13,7 +13,9 @@ from datetime import date, datetime, timedelta
 
 from mcp.server.fastmcp import FastMCP
 
-from . import config, db, garmin, sync, workouts
+import json
+
+from . import config, db, garmin, official, sync, wellness, workouts
 
 log = logging.getLogger(__name__)
 
@@ -33,6 +35,11 @@ when it is disabled the workout tools explain how to enable it.
 - Structured workouts: call `create_workout` WITHOUT confirm first and show the preview; call it again
   with confirm=true only after the athlete approves. With `date` it is scheduled in the Garmin calendar
   and reaches the watch at the next sync.
+- Heart-rate zones: when the athlete gives you new zones (e.g. after a test), save them with
+  `set_hr_zones` (valid_from = test date) so time-in-zone figures use them; activities before that
+  date keep their old zones. `get_hr_zones` shows what is in use.
+- Body weight/composition (Garmin scale or manual entries): `get_body_composition`. Daily calories,
+  steps, resting HR: `get_daily_summary`. Both read live from the official API.
 - Athlete notes: when the athlete tells you lasting facts useful for analysis (max HR, zones, sensors,
   shoes, injuries to keep in mind, goals), offer to save them with `update_athlete_notes`; read them
   with `get_athlete_notes`. They are also appended below at server start.
@@ -132,8 +139,7 @@ def _is_treadmill(act, ann) -> bool:
     return "treadmill" in (act["type_key"] or "") or "indoor" in (act["type_key"] or "")
 
 
-def _band_labels():
-    b = config.HR_BANDS
+def _band_labels(b: list[int]) -> list[str]:
     labels = [f"<{b[0]}"]
     for lo, hi in zip(b, b[1:]):
         labels.append(f"{lo}-{hi - 1}")
@@ -141,19 +147,38 @@ def _band_labels():
     return labels
 
 
-def _band_idx(hr):
-    return sum(1 for thr in config.HR_BANDS if hr >= thr)
+def _parse_thresholds(text) -> list[int]:
+    if isinstance(text, (list, tuple)):
+        vals = [int(round(float(x))) for x in text]
+    else:
+        vals = [int(round(float(x))) for x in re.split(r"[,;\s]+", str(text).strip()) if x]
+    if not 2 <= len(vals) <= 7:
+        raise ValueError("give between 2 and 7 thresholds (lower bound of zones 2..N), e.g. 135,150,160,170")
+    if vals != sorted(vals) or len(set(vals)) != len(vals) or vals[0] < 40 or vals[-1] > 230:
+        raise ValueError("thresholds must be increasing bpm values between 40 and 230")
+    return vals
 
 
-def _hr_band_seconds(conn, aid: int) -> list[float]:
-    secs = [0.0] * (len(config.HR_BANDS) + 1)
+def _zones_for(conn, day: str | None) -> tuple[list[int], str]:
+    """Zones that apply on a given date: the latest zones saved from the chat with valid_from <= day,
+    otherwise the starting zones from the settings."""
+    row = conn.execute("SELECT thresholds, valid_from FROM hr_zones WHERE valid_from <= ? "
+                       "ORDER BY valid_from DESC, id DESC LIMIT 1", (day or "9999-12-31",)).fetchone()
+    if row:
+        since = "whole history" if row["valid_from"] <= "0001-12-31" else f"valid from {row['valid_from']}"
+        return _parse_thresholds(row["thresholds"]), f"zones saved in chat, {since}"
+    return list(config.HR_BANDS), "starting zones from the settings (HR_BANDS)"
+
+
+def _hr_band_seconds(conn, aid: int, bands: list[int]) -> list[float]:
+    secs = [0.0] * (len(bands) + 1)
     rows = conn.execute("SELECT t_s, hr FROM records WHERE activity_id=? ORDER BY t_s",
                         (aid,)).fetchall()
     for cur, nxt in zip(rows, rows[1:]):
         if cur["hr"] is None:
             continue
         dt = min(nxt["t_s"] - cur["t_s"], 10)  # gaps > 10 s = pause
-        secs[_band_idx(cur["hr"])] += dt
+        secs[sum(1 for thr in bands if cur["hr"] >= thr)] += dt
     return secs
 
 
@@ -268,11 +293,13 @@ def list_activities(start_date: str | None = None, end_date: str | None = None,
 
 
 @mcp.tool()
-def get_activity(activity_id: str = "latest", include_laps: bool = True, type_filter: str = "") -> str:
-    """Summary + laps (like Garmin's per-lap CSV export) + HRR60 + time in HR bands + annotations.
+def get_activity(activity_id: str = "latest", include_laps: bool = True, type_filter: str = "",
+                 zones: str = "historical") -> str:
+    """Summary + laps (like Garmin's per-lap CSV export) + HRR60 + time in HR zones + annotations.
     Works for any sport (running, cycling, swimming...).
     activity_id: Garmin id, 'latest' or a date 'YYYY-MM-DD'. With 'latest' or a date, type_filter picks
-    the sport (substring of type_key: 'run', 'cycling', 'swim'...; '' = any)."""
+    the sport (substring of type_key: 'run', 'cycling', 'swim'...; '' = any).
+    zones: 'historical' (default) = HR zones valid on the activity date; 'current' = today's zones."""
     with ro() as conn:
         aid = _resolve_id(conn, activity_id, type_filter)
         act = conn.execute("SELECT * FROM activities WHERE activity_id=?", (aid,)).fetchone() if aid else None
@@ -319,10 +346,13 @@ def get_activity(activity_id: str = "latest", include_laps: bool = True, type_fi
             if hrr:
                 out.append(f"HRR60 (last lap {hrr['lap_s']}s): {hrr['hr_start']} → "
                            f"{hrr['hr_60s']} = {hrr['hrr_60']} bpm")
-            secs = _hr_band_seconds(conn, aid)
+            day = None if zones == "current" else (act["start_local"] or "")[:10]
+            bands, src = _zones_for(conn, day)
+            secs = _hr_band_seconds(conn, aid, bands)
             tot = sum(secs) or 1
-            out.append("time in HR bands: " + " | ".join(
-                f"{lab}: {hms(s)} ({round(100 * s / tot)}%)" for lab, s in zip(_band_labels(), secs)))
+            out.append(f"time in HR zones ({src}): " + " | ".join(
+                f"Z{i + 1} {lab}: {hms(s)} ({round(100 * s / tot)}%)"
+                for i, (lab, s) in enumerate(zip(_band_labels(bands), secs))))
         if include_laps and laps:
             cad_unit = "spm" if _is_step_sport(act["type_key"]) else "rpm"
             header = ["lap", "trigger", "time", "km", "pace", "kmh", "gap", "hr_avg", "hr_max", f"cad_{cad_unit}",
@@ -387,15 +417,19 @@ def get_activity_series(activity_id: str = "latest", every_s: int = 30,
 
 
 @mcp.tool()
-def training_summary(weeks: int = 12, end_date: str | None = None, type_filter: str = "run") -> str:
+def training_summary(weeks: int = 12, end_date: str | None = None, type_filter: str = "run",
+                     zones: str = "historical") -> str:
     """Weekly summary (Mon-Sun weeks) for one sport: sessions, km, time, average pace, longest session,
-    training load and time distribution across the HR bands (HR_BANDS).
-    type_filter: substring of type_key ('run' default, 'cycling', 'swim', '' = all sports together)."""
+    training load and time distribution across the HR zones Z1..Zn.
+    type_filter: substring of type_key ('run' default, 'cycling', 'swim', '' = all sports together).
+    zones: 'historical' (default) = each activity with the zones valid on its date; 'current' = today's."""
     end = date.fromisoformat(end_date) if end_date else date.today()
     end_monday = end - timedelta(days=end.weekday())
     start = end_monday - timedelta(weeks=weeks - 1)
-    labels = _band_labels()
     with ro() as conn:
+        cur_bands, cur_src = _zones_for(conn, None)
+        n_bands = len(cur_bands) + 1
+        used: dict[str, str] = {}
         acts = conn.execute(
             "SELECT a.*, n.treadmill tm FROM activities a LEFT JOIN annotations n USING(activity_id) "
             "WHERE coalesce(type_key,'') LIKE ? AND substr(start_local,1,10) BETWEEN ? AND ? "
@@ -405,7 +439,7 @@ def training_summary(weeks: int = 12, end_date: str | None = None, type_filter: 
             d = date.fromisoformat(a["start_local"][:10])
             wk = d - timedelta(days=d.weekday())
             w = weeks_d.setdefault(wk, dict(n=0, km=0.0, s=0.0, longest=0.0, load=0.0, tm=0,
-                                            bands=[0.0] * len(labels)))
+                                            bands=[0.0] * 8))
             km = (a["distance_m"] or 0) / 1000
             w["n"] += 1
             w["km"] += km
@@ -415,10 +449,13 @@ def training_summary(weeks: int = 12, end_date: str | None = None, type_filter: 
             if a["tm"] or "treadmill" in (a["type_key"] or ""):
                 w["tm"] += 1
             if a["has_details"] == 1:
-                for i, s in enumerate(_hr_band_seconds(conn, a["activity_id"])):
+                bands, src = (cur_bands, cur_src) if zones == "current" else _zones_for(conn, d.isoformat())
+                used[",".join(map(str, bands))] = src
+                n_bands = max(n_bands, len(bands) + 1)
+                for i, s in enumerate(_hr_band_seconds(conn, a["activity_id"], bands)):
                     w["bands"][i] += s
     header = ["week", "sessions", "treadmill", "km", "time", "avg_pace", "longest_km", "load"] + \
-             [f"hr {lab}" for lab in labels]
+             [f"Z{i + 1}" for i in range(n_bands)]
     data = []
     wk = start
     while wk <= end_monday:
@@ -427,11 +464,14 @@ def training_summary(weeks: int = 12, end_date: str | None = None, type_filter: 
             tot = sum(w["bands"]) or 1
             data.append([wk.isoformat(), w["n"], w["tm"], r1(w["km"]), hms(w["s"]),
                          pace(w["km"] * 1000 / w["s"]) if w["s"] else "", r1(w["longest"]),
-                         r1(w["load"], 0)] + [f"{round(100 * b / tot)}%" for b in w["bands"]])
+                         r1(w["load"], 0)] + [f"{round(100 * b / tot)}%" for b in w["bands"][:n_bands]])
         else:
-            data.append([wk.isoformat(), 0, 0, 0, "", "", "", ""] + [""] * len(labels))
+            data.append([wk.isoformat(), 0, 0, 0, "", "", "", ""] + [""] * n_bands)
         wk += timedelta(weeks=1)
-    return to_csv(header, data)
+    defs = used or {",".join(map(str, cur_bands)): cur_src}
+    head = "HR zones used (lower bounds of Z2..Zn): " + "; ".join(
+        f"{k} ({v})" for k, v in defs.items())
+    return head + "\n" + to_csv(header, data)
 
 
 @mcp.tool()
@@ -497,6 +537,134 @@ def query_sql(sql: str, max_rows: int = 300) -> str:
     res = to_csv(header, [list(r) for r in rows])
     return res + (f"... (truncated to {max_rows} rows)\n" if more else "") + \
         f"[{len(rows)} rows, {time.time() - t:.2f}s]"
+
+
+# ---------------------------------------------------------------- heart-rate zones
+@mcp.tool()
+def set_hr_zones(thresholds: str, valid_from: str | None = None, note: str | None = None) -> str:
+    """Save the athlete's heart-rate zones (e.g. after a test) for all time-in-zone calculations.
+    thresholds: lower bound in bpm of zones 2..N, comma separated, e.g. "158,166,170,175"
+      (= Z1 <158, Z2 158-165, Z3 166-169, Z4 170-174, Z5 >=175). If the athlete gives full ranges, convert.
+    valid_from: 'YYYY-MM-DD' from which the zones apply (default today; usually the test date);
+      'all' = apply to the whole history too. Earlier activities keep the zones valid at their date.
+    Ask the athlete which date to use if it is not clear. Also keep the athlete notes in sync."""
+    try:
+        vals = _parse_thresholds(thresholds)
+    except ValueError as e:
+        return f"Zones not saved: {e}"
+    vf = (valid_from or date.today().isoformat()).strip().lower()
+    if vf in ("all", "always", "everything", "sempre", "tutto"):
+        vf = "0001-01-01"
+    elif not re.fullmatch(r"\d{4}-\d{2}-\d{2}", vf):
+        return "valid_from must be YYYY-MM-DD or 'all'."
+    db.init()
+    conn = db.connect()
+    try:
+        conn.execute("INSERT INTO hr_zones (valid_from, thresholds, note, created_at) VALUES (?,?,?,?)",
+                     (vf, ",".join(map(str, vals)), note, datetime.now().isoformat(timespec="seconds")))
+        conn.commit()
+    finally:
+        conn.close()
+    labels = " | ".join(f"Z{i + 1} {lab}" for i, lab in enumerate(_band_labels(vals)))
+    since = "the whole history" if vf == "0001-01-01" else f"activities from {vf} on"
+    return f"HR zones saved for {since}: {labels}"
+
+
+@mcp.tool()
+def get_hr_zones() -> str:
+    """Heart-rate zones in use: current zones and the history of zones saved from the chat."""
+    with ro() as conn:
+        cur, src = _zones_for(conn, None)
+        rows = conn.execute("SELECT * FROM hr_zones ORDER BY valid_from, id").fetchall()
+    out = [f"current ({src}): " + " | ".join(f"Z{i + 1} {lab}" for i, lab in enumerate(_band_labels(cur))),
+           f"starting zones from the settings (used before the first saved zones): "
+           f"{','.join(map(str, config.HR_BANDS))}", "saved zones:"]
+    for r in rows:
+        since = "whole history" if r["valid_from"] <= "0001-12-31" else r["valid_from"]
+        out.append(f"- id {r['id']}: from {since}: {r['thresholds']}" + (f" — {r['note']}" if r["note"] else ""))
+    if not rows:
+        out.append("- none")
+    return "\n".join(out)
+
+
+@mcp.tool()
+def delete_hr_zones(zone_id: int) -> str:
+    """Delete a wrong entry from the saved HR zones (id from get_hr_zones). Only on the athlete's request."""
+    db.init()
+    conn = db.connect()
+    try:
+        n = conn.execute("DELETE FROM hr_zones WHERE id=?", (zone_id,)).rowcount
+        conn.commit()
+    finally:
+        conn.close()
+    return f"Deleted HR zones entry {zone_id}." if n else "No such entry."
+
+
+# ---------------------------------------------------------------- wellness (live, official API)
+def _wellness(fetch, parse, start_date, end_date, default_days: int, raw: bool):
+    if config.read_source() != "official":
+        return None, ("This needs the official Garmin Personal API key (GARMIN_PERSONAL_API_KEY). "
+                      + official.KEY_HINT)
+    end_date = end_date or date.today().isoformat()
+    start_date = start_date or (date.fromisoformat(end_date) - timedelta(days=default_days - 1)).isoformat()
+    try:
+        client = official.Client()
+    except (official.AuthError, official.RateLimited) as e:
+        return None, str(e)
+    payloads = []
+    try:
+        for a, b in wellness.windows(start_date, end_date):
+            payloads.append(fetch(client, a, b))
+            time.sleep(min(config.REQUEST_DELAY_S, 1.0))
+    except (official.AuthError, official.RateLimited) as e:
+        return None, str(e)
+    except Exception as e:  # noqa: BLE001
+        return None, f"Garmin request failed: {type(e).__name__}: {e}"
+    finally:
+        client.close()
+    if raw:
+        return None, "RAW (first window, truncated):\n" + json.dumps(payloads[:1], ensure_ascii=False)[:4000]
+    return (start_date, end_date, parse(payloads)), None
+
+
+@mcp.tool()
+def get_body_composition(start_date: str | None = None, end_date: str | None = None,
+                         raw: bool = False) -> str:
+    """Weight and, when available (Garmin Index scale or similar), BMI, body fat %, body water %,
+    muscle mass, bone mass, visceral fat, metabolic age — one row per measurement.
+    Default period: last 90 days. Read live from the official Personal API (not archived).
+    raw=True returns the unparsed Garmin response (to check which fields an account provides)."""
+    res, err = _wellness(lambda c, a, b: c.weight_measurements(a, b), wellness.parse_weights,
+                         start_date, end_date, 90, raw)
+    if err:
+        return err
+    start, end, rows = res
+    if not rows:
+        return f"No weight measurements in Garmin Connect between {start} and {end}."
+    cols = ["date"] + list(wellness.WEIGHT_FIELDS)
+    present = [c for c in cols if c == "date" or any(r.get(c) is not None for r in rows)]
+    missing = [c for c in cols if c not in present]
+    out = f"{len(rows)} measurements {start} → {end}\n" + to_csv(present, [[r.get(c, "") for c in present] for r in rows])
+    if missing:
+        out += f"(not provided by this account/scale: {', '.join(missing)})\n"
+    return out
+
+
+@mcp.tool()
+def get_daily_summary(start_date: str | None = None, end_date: str | None = None, raw: bool = False) -> str:
+    """Day-by-day totals from Garmin: calories (total, active, resting/BMR), steps, distance, resting/min/max
+    heart rate, stress, Body Battery, intensity minutes. Default period: last 14 days.
+    Read live from the official Personal API (not archived). raw=True returns the unparsed response."""
+    res, err = _wellness(lambda c, a, b: c.daily_summaries(a, b), wellness.parse_daily,
+                         start_date, end_date, 14, raw)
+    if err:
+        return err
+    start, end, rows = res
+    if not rows:
+        return f"No daily summaries from Garmin between {start} and {end}."
+    cols = ["date"] + list(wellness.DAILY_FIELDS)
+    present = [c for c in cols if c == "date" or any(r.get(c) is not None for r in rows)]
+    return f"{len(rows)} days {start} → {end}\n" + to_csv(present, [[r.get(c, "") for c in present] for r in rows])
 
 
 # ---------------------------------------------------------------- athlete notes

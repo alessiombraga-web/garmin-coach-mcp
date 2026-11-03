@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "garmin-coach-connector",
   "display_name": "Garmin Coach (Docker server)",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Connect Claude Desktop to your self-hosted Garmin Coach Docker server, without editing configuration files.",
   "long_description": "For users who run the Garmin Coach server with Docker (homelab, NAS, always-on PC). This extension connects Claude Desktop to it: enter the server address and the MCP token from your .env file, and you're done. No Node.js installation and no claude_desktop_config.json editing needed.\n\nIf you don't have a Docker server, install the 'Garmin Coach' extension instead: it runs everything inside Claude Desktop.",
   "author": {
@@ -18,7 +18,12 @@
   "support": "https://github.com/fabio983/garmin-coach-mcp/issues",
   "icon": "icon.png",
   "license": "MIT",
-  "keywords": ["garmin", "running", "docker", "self-hosted"],
+  "keywords": [
+    "garmin",
+    "running",
+    "docker",
+    "self-hosted"
+  ],
   "server": {
     "type": "node",
     "entry_point": "node_modules/mcp-remote/dist/proxy.js",
@@ -52,6 +57,10 @@
     }
   },
   "compatibility": {
-    "platforms": ["darwin", "win32", "linux"]
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ]
   }
 }

@@ -24,10 +24,12 @@ which is **read-only**. Writing workouts to Garmin is optional and available onl
 ## Contents
 
 - [Two ways to install](#two-ways-to-install)
-- [Quick install: Claude Desktop extension](#quick-install-claude-desktop-extension)
+- [Quick install: Claude Desktop extension](#quick-install-claude-desktop-extension) · [Extension settings](#extension-settings)
 - [Advanced install: Docker server](#advanced-install-docker-server)
 - [Connecting Claude Desktop to the Docker server](#connecting-claude-desktop-to-the-docker-server)
 - [Write access (optional, Docker only)](#write-access-optional-docker-only)
+- [Heart-rate zones](#heart-rate-zones)
+- [Weight, body composition and daily totals](#weight-body-composition-and-daily-totals)
 - [Notes about you](#notes-about-you)
 - [Tools](#tools)
 - [Structured workouts](#structured-workouts)
@@ -67,15 +69,23 @@ No terminal, no Docker, no configuration files.
    accept the terms, choose an expiry (up to 1 year) and create the key. Copy it: Garmin shows it only once.
 3. **Download `garmin-coach-<version>.mcpb`** from the [latest release](https://github.com/fabio983/garmin-coach-mcp/releases/latest).
 4. **Double-click the file.** Claude Desktop opens an installation window.
-5. **Paste the Garmin key** in the *Garmin Personal API key* field, leave the other fields as they are, click **Install**
-   and make sure the extension is enabled.
+5. **Fill in the settings** (see [Extension settings](#extension-settings)): paste the Garmin key; the other fields
+   are optional. Click **Install** and make sure the extension is enabled.
 6. **Open a new chat** and ask: *"Sync my Garmin runs and tell me about my latest one."*
 
-The first import downloads your history since 1 January 2024 (change it in the extension settings): it takes a few
-minutes and continues in the background while Claude Desktop is open. Claude Desktop manages Python and all
+The first import continues in the background while Claude Desktop is open. Claude Desktop manages Python and all
 dependencies by itself.
 
-The archive is stored in `Documents/Garmin Coach` (or in the folder chosen during installation).
+### Extension settings
+
+Shown in the installation window and later in **Claude Desktop → Settings → Extensions → Garmin Coach**.
+
+| Setting | Required | What it does | What to enter |
+|---|---|---|---|
+| **Garmin Personal API key** | Yes | Lets Garmin Coach read your Garmin data (read-only: it can't change anything). | The key created in Garmin Connect → Settings → Personal API. |
+| **Data folder** | No | Where the archive is saved: activities, notes, heart-rate zones. A `Garmin Coach` folder is created inside it. | Leave the default (`Documents`) or pick another folder. |
+| **Import runs from (YYYY-MM-DD)** | No | Date from which activities are downloaded **at the first import only**. An older date means a longer first import (a few seconds per activity). Changing it later has no effect: to add older activities ask Claude (*"sync my activities since 2019"*). | Default `2024-01-01`. Pick a recent date if you want to start quickly. |
+| **Starting heart-rate zones** | No | Zones used for the "time in zone" figures (single activity and weekly summary). They are the **starting** zones: after a new test just tell Claude the new ones in chat (see [Heart-rate zones](#heart-rate-zones)). | 4 numbers: the bpm where zones 2, 3, 4 and 5 begin, e.g. `135,150,160,170` → Z1 <135, Z2 135–149, Z3 150–159, Z4 160–169, Z5 ≥170. Copy them from Garmin Connect (Heart rate zones). The default values are only an example. |
 
 ---
 
@@ -194,6 +204,36 @@ It also adds per-lap grade-adjusted pace and the shoes assigned in Garmin Connec
 
 ---
 
+## Heart-rate zones
+
+Time-in-zone figures (in `get_activity` and `training_summary`) use **the zones valid on the date of each activity**:
+
+- before you save any zones in chat, the *starting zones* from the settings (`HR_BANDS` with Docker) apply;
+- when your zones change, for example after a test, tell Claude: *"After today's test my zones are 158, 166, 170,
+  175: save them"*. It stores them with `set_hr_zones`, valid **from that date**: older activities keep the zones
+  valid at their time, so comparisons over months stay fair;
+- to apply new zones to the whole history too, say so (*"use them for all my past activities as well"*);
+- ask *"which heart-rate zones are you using?"* to see the current zones and their history (`get_hr_zones`).
+
+Claude can also recompute any activity or weekly summary with today's zones on request (`zones='current'`).
+
+---
+
+## Weight, body composition and daily totals
+
+Read live from the official API (nothing to configure):
+
+- `get_body_composition`: weight and, if your scale measures them (e.g. Garmin Index), BMI, body fat %, body water %,
+  muscle mass, bone mass, visceral fat, metabolic age. Manual weight entries in Garmin Connect are included.
+- `get_daily_summary`: day by day, total/active/resting calories, steps, distance, resting/min/max heart rate,
+  stress, Body Battery, intensity minutes.
+
+> *"How did my weight and body fat change in the last 2 months?"* · *"How many calories did I burn yesterday?"*
+
+Fields depend on your devices; the tools state which ones your account doesn't provide.
+
+---
+
 ## Notes about you
 
 Claude works better when it knows your context: sensors, max heart rate, zones, target cadence, which shoes are for
@@ -212,11 +252,14 @@ start from [`examples/athlete.example.md`](examples/athlete.example.md)).
 | `sync_garmin` | Fetch new activities now (`full=true` re-imports everything in background) | ✅ | ✅ |
 | `sync_status` | Data sources, archive counts, period covered, latest syncs | ✅ | ✅ |
 | `list_activities` | Activities in a date range, filterable by type | ✅ | ✅ |
-| `get_activity` | Summary, laps, HRR60, time in HR bands, planned workout, annotations | ✅ | ✅ |
+| `get_activity` | Summary, laps, HRR60, time in HR zones, planned workout, annotations | ✅ | ✅ |
 | `get_activity_series` | Second-by-second data averaged every N seconds | ✅ | ✅ |
 | `training_summary` | Weekly runs, km, time, pace, longest run, load, HR distribution | ✅ | ✅ |
 | `annotate_activity` | Real temperature, humidity, treadmill, shoes, session type, RPE, HRR, notes | ✅ | ✅ |
 | `get_athlete_notes` / `update_athlete_notes` | Notes about you for future chats | ✅ | ✅ |
+| `set_hr_zones` / `get_hr_zones` / `delete_hr_zones` | Heart-rate zones from the chat, each valid from a date | ✅ | ✅ |
+| `get_body_composition` | Weight, BMI, body fat, water, muscle, bone (live, official API) | ✅ | ✅ |
+| `get_daily_summary` | Daily calories, steps, resting HR, stress, Body Battery (live, official API) | ✅ | ✅ |
 | `query_sql` | Read-only SQL on the archive | ✅ | ✅ |
 | `create_workout` | Structured running workout: preview → confirm → upload and schedule | – | ✍️ community module |
 | `get_workout` / `list_workouts` | Workouts in Garmin Connect, calendar | – | ✍️ community module |
@@ -268,13 +311,12 @@ All settings live in `.env` (see [`.env.example`](.env.example)). After changing
 | `BACKFILL_FROM` | `2024-01-01` | Start date of the first import |
 | `SYNC_INTERVAL_MIN` | `30` | Background sync interval (0 = on demand only) |
 | `REQUEST_DELAY_S` | `1.5` | Pause between Garmin requests |
-| `HR_BANDS` | `135,150,160,170` | Lower bounds of HR bands 2..N for time-in-zone |
+| `HR_BANDS` | `135,150,160,170` | Starting HR zones: bpm where zones 2..N begin. Zones told to Claude in chat (`set_hr_zones`) take over from their date |
 | `DETAIL_TYPE_MATCH` | `all` | Activity types (substring of Garmin `typeKey`, e.g. `run,cycling`) for which FIT/laps/records are downloaded; `all` = every activity |
 | `ATHLETE_FILE` | `/data/athlete.md` | Notes about you |
 | `MCP_PORT` | `8765` | Port inside the container |
 
-The extension exposes the same main options (key, data folder, first import date, HR bands) in
-**Claude Desktop → Settings → Extensions → Garmin Coach**.
+The extension exposes the main options in its own settings: see [Extension settings](#extension-settings).
 
 ---
 

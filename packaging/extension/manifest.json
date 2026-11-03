@@ -2,9 +2,9 @@
   "manifest_version": "0.4",
   "name": "garmin-coach",
   "display_name": "Garmin Coach",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Let Claude read your Garmin activities: runs, rides, swims, laps, heart rate, running dynamics, weekly trends.",
-  "long_description": "Garmin Coach keeps a private archive of your Garmin Connect activities on your computer (original FIT files, laps and second-by-second data) and lets Claude analyse them: single runs or rides, intervals, cardiac drift, weekly volume and intensity, long-term trends. Works with every sport recorded on Garmin.\n\nData is read through Garmin's official Connect Personal API, which is read-only: this extension never writes anything to your Garmin account. You only need a Personal API key, created in Garmin Connect under Settings → Personal API.\n\nYour data stays on your computer, in the folder you choose.",
+  "long_description": "Garmin Coach keeps a private archive of your Garmin Connect activities on your computer (original FIT files, laps and second-by-second data) and lets Claude analyse them: single runs or rides, intervals, cardiac drift, weekly volume and intensity, long-term trends. Works with every sport recorded on Garmin.\n\nData is read through Garmin's official Connect Personal API, which is read-only: this extension never writes anything to your Garmin account. You only need a Personal API key, created in Garmin Connect under Settings → Personal API.\n\nIt can also read your weight and body composition (Garmin scale) and daily totals such as calories, steps and resting heart rate.\n\nYour data stays on your computer, in the folder you choose.",
   "author": {
     "name": "Fabio Porta",
     "url": "https://github.com/fabio983"
@@ -18,13 +18,26 @@
   "support": "https://github.com/fabio983/garmin-coach-mcp/issues",
   "icon": "icon.png",
   "license": "MIT",
-  "keywords": ["garmin", "running", "cycling", "fitness", "training", "fit", "heart rate"],
+  "keywords": [
+    "garmin",
+    "running",
+    "cycling",
+    "fitness",
+    "training",
+    "fit",
+    "heart rate"
+  ],
   "server": {
     "type": "uv",
     "entry_point": "src/server.py",
     "mcp_config": {
       "command": "uv",
-      "args": ["run", "--directory", "${__dirname}", "src/server.py"],
+      "args": [
+        "run",
+        "--directory",
+        "${__dirname}",
+        "src/server.py"
+      ],
       "env": {
         "GC_RUNTIME": "extension",
         "GARMIN_PERSONAL_API_KEY": "${user_config.garmin_api_key}",
@@ -38,46 +51,101 @@
     "garmin_api_key": {
       "type": "string",
       "title": "Garmin Personal API key",
-      "description": "Create it in Garmin Connect on the web: Settings → Personal API (connect.garmin.com/app/settings/personalApiToken). Read-only access.",
+      "description": "Required. Lets Garmin Coach read (never change) your Garmin data. Create it in Garmin Connect on the web: Settings → Personal API (connect.garmin.com/app/settings/personalApiToken).",
       "sensitive": true,
       "required": true
     },
     "data_folder": {
       "type": "directory",
       "title": "Data folder",
-      "description": "Where your archive is stored. A 'Garmin Coach' folder is created inside it.",
+      "description": "Where your archive (activities, notes, heart-rate zones) is saved. A 'Garmin Coach' folder is created inside the folder you pick. Default: Documents.",
       "default": "${DOCUMENTS}",
       "required": false
     },
     "backfill_from": {
       "type": "string",
       "title": "Import runs from (YYYY-MM-DD)",
-      "description": "First import: activities from this date on. Older ones can be imported later by asking Claude.",
+      "description": "Used only for the first import: activities from this date on are downloaded (YYYY-MM-DD). An older date makes the first import longer. Older activities can be added later by asking Claude.",
       "default": "2024-01-01",
       "required": false
     },
     "hr_bands": {
       "type": "string",
-      "title": "Heart-rate bands (optional)",
-      "description": "Lower bound in bpm of each band after the first, comma separated. Example: 135,150,160,170.",
+      "title": "Starting heart-rate zones (optional)",
+      "description": "The bpm where zones 2, 3, 4 and 5 begin, comma separated (e.g. 135,150,160,170 = Z1 below 135 … Z5 from 170). Copy them from Garmin Connect (Heart rate zones). After a new test, just tell Claude your new zones in chat.",
       "default": "135,150,160,170",
       "required": false
     }
   },
   "tools": [
-    {"name": "sync_garmin", "description": "Fetch new activities from Garmin Connect"},
-    {"name": "sync_status", "description": "Archive status and latest syncs"},
-    {"name": "list_activities", "description": "Activities in a date range"},
-    {"name": "get_activity", "description": "Summary, laps, heart-rate bands, recovery, planned workout"},
-    {"name": "get_activity_series", "description": "Second-by-second data at any resolution"},
-    {"name": "training_summary", "description": "Weekly volume, long run, load, intensity"},
-    {"name": "annotate_activity", "description": "Save real temperature, treadmill, shoes, RPE, notes"},
-    {"name": "get_athlete_notes", "description": "Read your saved notes (zones, sensors, shoes)"},
-    {"name": "update_athlete_notes", "description": "Save notes about you for future chats"},
-    {"name": "query_sql", "description": "Read-only SQL on your archive"}
+    {
+      "name": "sync_garmin",
+      "description": "Fetch new activities from Garmin Connect"
+    },
+    {
+      "name": "sync_status",
+      "description": "Archive status and latest syncs"
+    },
+    {
+      "name": "list_activities",
+      "description": "Activities in a date range"
+    },
+    {
+      "name": "get_activity",
+      "description": "Summary, laps, heart-rate bands, recovery, planned workout"
+    },
+    {
+      "name": "get_activity_series",
+      "description": "Second-by-second data at any resolution"
+    },
+    {
+      "name": "training_summary",
+      "description": "Weekly volume, long run, load, intensity"
+    },
+    {
+      "name": "annotate_activity",
+      "description": "Save real temperature, treadmill, shoes, RPE, notes"
+    },
+    {
+      "name": "get_athlete_notes",
+      "description": "Read your saved notes (zones, sensors, shoes)"
+    },
+    {
+      "name": "update_athlete_notes",
+      "description": "Save notes about you for future chats"
+    },
+    {
+      "name": "set_hr_zones",
+      "description": "Save new heart-rate zones (e.g. after a test), from a given date"
+    },
+    {
+      "name": "get_hr_zones",
+      "description": "Heart-rate zones in use and their history"
+    },
+    {
+      "name": "delete_hr_zones",
+      "description": "Remove a wrong zones entry"
+    },
+    {
+      "name": "get_body_composition",
+      "description": "Weight, body fat, muscle, water, bone (Garmin scale)"
+    },
+    {
+      "name": "get_daily_summary",
+      "description": "Daily calories, steps, resting heart rate, stress"
+    },
+    {
+      "name": "query_sql",
+      "description": "Read-only SQL on your archive"
+    }
   ],
   "compatibility": {
-    "platforms": ["darwin", "win32"],
-    "runtimes": {"python": ">=3.12,<3.14"}
+    "platforms": [
+      "darwin",
+      "win32"
+    ],
+    "runtimes": {
+      "python": ">=3.12,<3.14"
+    }
   }
 }

@@ -107,6 +107,14 @@ class Client:
             raise
         return res if isinstance(res, list) else []
 
+    def weight_measurements(self, start_date: str, end_date: str):
+        """Raw weight / body composition payload for a date range (inclusive)."""
+        return self._call(GarminPersonalApiClient.get_weight_measurements, start_date, end_date)
+
+    def daily_summaries(self, start_date: str, end_date: str):
+        """Raw daily summaries payload (calories, steps, resting HR...) for a date range (inclusive)."""
+        return self._call(GarminPersonalApiClient.get_daily_summaries, start_date, end_date)
+
     def close(self):
         if self._api:
             self._api.close()

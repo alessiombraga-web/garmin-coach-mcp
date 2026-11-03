@@ -31,6 +31,8 @@ Ci vogliono **circa 10 minuti** e **non serve essere esperti di computer**: nien
 - [Passo 4 — Installalo in Claude](#passo-4--installalo-in-claude)
 - [Passo 5 — La prima chat](#passo-5--la-prima-chat)
 - [Racconta a Claude chi sei](#racconta-a-claude-chi-sei)
+- [Le tue zone cardiache](#le-tue-zone-cardiache)
+- [Peso, composizione corporea e calorie](#peso-composizione-corporea-e-calorie)
 - [Esempi di domande](#esempi-di-domande)
 - [Domande frequenti](#domande-frequenti)
 - [Se qualcosa non va](#se-qualcosa-non-va)
@@ -87,17 +89,25 @@ Non può modificare né cancellare niente sul tuo account Garmin.
 1. Con Claude aperto, fai **doppio clic** sul file `garmin-coach-…mcpb` che hai scaricato.
    - Se non succede niente: in Claude apri **Impostazioni → Estensioni** e trascina il file dentro la finestra.
 2. Si apre la finestra di installazione di **Garmin Coach**. Clicca su **Installa**.
-3. Ti chiede le impostazioni:
-   - **Garmin Personal API key**: incolla la chiave che hai copiato al passo 2;
-   - **Import runs from (YYYY-MM-DD)**: è la data da cui Garmin Coach scarica le tue corse la prima volta.
-     Di base è `2024-01-01`; se vuoi puoi cambiarla, scrivendola nel formato anno-mese-giorno (per esempio
-     `2022-06-01`). Leggi la nota qui sotto prima di scegliere;
-   - lascia tutto il resto com'è.
+3. Ti chiede le impostazioni, spiegate una per una nella tabella qui sotto. L'unica obbligatoria è la chiave Garmin:
+   se vuoi, tutto il resto puoi lasciarlo com'è.
 4. Conferma e controlla che l'estensione sia **attiva**, con l'interruttore acceso.
+
+### Le impostazioni, una per una
+
+I nomi sono in inglese, come li vedi nella finestra. Le stesse impostazioni le ritrovi dopo in
+**Impostazioni → Estensioni → Garmin Coach**.
+
+| Impostazione | Obbligatoria? | A cosa serve | Cosa scrivere |
+|---|---|---|---|
+| **Garmin Personal API key** | Sì | Dà a Garmin Coach il permesso di **leggere** i tuoi dati Garmin. Non può modificare niente. | La chiave creata al passo 2. |
+| **Data folder** | No | La cartella dove Garmin Coach salva il tuo archivio: attività, note, zone cardiache. Dentro crea una cartella **Garmin Coach**. | Lascia quella proposta (**Documenti**) oppure scegline un'altra. |
+| **Import runs from (YYYY-MM-DD)** | No | La data da cui Garmin Coach scarica le tue attività **la prima volta**. Leggi la nota qui sotto prima di cambiarla. | Di base `2024-01-01`. Se la cambi, scrivila nel formato anno-mese-giorno, per esempio `2022-06-01`. |
+| **Starting heart-rate zones** | No | Le tue zone di frequenza cardiaca **di partenza**. Servono per calcolare quanto tempo passi in ogni zona, nella singola attività e nel riepilogo settimanale. Quando cambiano, per esempio dopo un test, non serve tornare qui: basta dirlo a Claude in chat (vedi [Le tue zone cardiache](#le-tue-zone-cardiache)). | 4 numeri separati da virgola: i battiti a cui **iniziano** la zona 2, la 3, la 4 e la 5. Per esempio `135,150,160,170` vuol dire: zona 1 sotto 135, zona 2 da 135 a 149, zona 3 da 150 a 159, zona 4 da 160 a 169, zona 5 da 170 in su. Il modo più semplice è copiarle da Garmin Connect (Impostazioni utente → Zone di frequenza cardiaca). I valori già scritti sono solo un esempio. |
 
 Fatto. La prima volta Claude può impiegare qualche secondo in più a partire, perché prepara da solo quello che gli serve.
 
-> 📅 **Nota sulla data di partenza**
+> 📅 **Nota sulla data di partenza ("Import runs from")**
 >
 > - **Più la data è lontana, più tempo serve la prima volta.** Ogni corsa richiede qualche secondo: con un paio di
 >   anni di corse ci vogliono alcuni minuti, con molti anni anche mezz'ora o più, sempre con Claude aperto.
@@ -143,6 +153,41 @@ Puoi anche aggiungere a una corsa le cose che Garmin non sa:
 
 ---
 
+## Le tue zone cardiache
+
+Per dire quanto tempo hai passato in ogni zona, Garmin Coach usa **le zone valide nel giorno di ogni attività**:
+
+- all'inizio usa le zone che hai scritto nelle impostazioni (**Starting heart-rate zones**);
+- quando le tue zone cambiano, per esempio dopo un test, **dillo a Claude in chat**:
+  > *"Dopo il test di oggi le mie zone sono: zona 2 da 158, zona 3 da 166, zona 4 da 170, zona 5 da 175. Salvale."*
+
+  Garmin Coach le usa **da quel giorno in poi**. Le attività precedenti restano calcolate con le zone che avevi
+  allora, così i confronti tra mesi diversi restano corretti;
+- se vuoi che le nuove zone valgano anche per tutte le attività passate, dillo: *"usale anche per tutto lo storico"*;
+- per vedere quali zone sta usando chiedi: *"Che zone cardiache stai usando?"*.
+
+Non serve modificare le impostazioni dell'estensione dopo ogni test: quelle restano solo il punto di partenza.
+
+---
+
+## Peso, composizione corporea e calorie
+
+Garmin Coach legge anche, direttamente da Garmin:
+
+- **peso e composizione corporea**: peso e, se la tua bilancia li misura (per esempio una bilancia Garmin Index),
+  BMI, percentuale di grasso, acqua, massa muscolare e ossea. Valgono anche i pesi inseriti a mano in Garmin Connect;
+- **riepilogo di ogni giorno**: calorie totali, attive e a riposo, passi, frequenza cardiaca a riposo, stress,
+  Body Battery.
+
+Non c'è niente da configurare. Chiedi per esempio:
+
+> *"Com'è cambiato il mio peso negli ultimi due mesi? E la percentuale di grasso?"*
+> *"Quante calorie ho consumato ieri, tra allenamento e resto della giornata?"*
+
+I dati disponibili dipendono dai tuoi dispositivi: se la bilancia non misura un valore, Claude te lo dice.
+
+---
+
 ## Esempi di domande
 
 **Sulla singola corsa**
@@ -154,6 +199,10 @@ Puoi anche aggiungere a una corsa le cose che Garmin non sa:
 - *"Fammi un riepilogo delle ultime 12 settimane: chilometri, uscite, lungo più lungo."*
 - *"Sto correndo troppo forte negli allenamenti facili?"*
 - *"La mia cadenza è migliorata rispetto all'anno scorso?"*
+
+**Su peso e giornata**
+- *"Fammi vedere l'andamento del peso da settembre."*
+- *"Nei giorni di lungo quante calorie consumo in tutto?"*
 
 **Per programmare**
 - *"Guardando gli ultimi due mesi, preparami un piano per la prossima settimana."*
@@ -189,6 +238,10 @@ che le misurano; la cadenza e la potenza in bici solo con i relativi sensori.
 Sì: Garmin Coach scarica lap e dati secondo per secondo di tutte le attività. Con le versioni precedenti alla 0.3.1
 venivano scaricati solo per le corse: se hai installato una versione precedente, aggiorna (vedi sotto) e alla
 sincronizzazione successiva Garmin Coach completa da solo anche le altre attività già in archivio.
+
+**Dopo un test devo cambiare le zone nelle impostazioni dell'estensione?**
+No, basta dirlo a Claude in chat: le nuove zone valgono da quel giorno, e le attività precedenti restano con quelle
+di allora. Vedi [Le tue zone cardiache](#le-tue-zone-cardiache).
 
 **La chiave scade?**
 Sì, dopo il periodo che hai scelto. Garmin ti manda un'email circa una settimana prima. Per rinnovarla crea una

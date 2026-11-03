@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 — 2026-11-03
+
+- **Heart-rate zones from the chat, with dates.** New tools `set_hr_zones`, `get_hr_zones`, `delete_hr_zones`:
+  tell Claude your new zones (e.g. after a test) and they apply from that date; earlier activities keep the zones
+  valid at their time. The zones in the settings (`HR_BANDS`) are now the *starting* zones.
+  `get_activity` and `training_summary` show which zones were used and accept `zones='current'`.
+- **Weight and body composition:** `get_body_composition` (weight, BMI, body fat, water, muscle, bone, visceral fat,
+  metabolic age when the scale provides them).
+- **Daily totals:** `get_daily_summary` (total/active/resting calories, steps, distance, resting/min/max HR, stress,
+  Body Battery, intensity minutes).
+- Both wellness tools read live from the official Personal API and accept `raw=true` to inspect Garmin's response.
+- Docs: every extension setting explained (EN/IT), new sections on heart-rate zones and wellness data.
+
 ## 0.3.1 — 2026-11-02
 
 **All sports, not just running.**

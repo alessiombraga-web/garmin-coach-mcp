@@ -104,6 +104,17 @@ CREATE TABLE IF NOT EXISTS annotations (
     updated_at      TEXT
 );
 
+-- Heart-rate zones saved from the chat, with the date they start to apply.
+-- thresholds = lower bounds (bpm) of zones 2..N, comma separated. Before the first row (or with no
+-- rows) the starting zones from the settings (HR_BANDS) apply.
+CREATE TABLE IF NOT EXISTS hr_zones (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    valid_from      TEXT,       -- YYYY-MM-DD ('0001-01-01' = whole history)
+    thresholds      TEXT,
+    note            TEXT,
+    created_at      TEXT
+);
+
 -- Cross-process sync lock (Claude Desktop may start several server processes)
 CREATE TABLE IF NOT EXISTS sync_lock (
     id              INTEGER PRIMARY KEY CHECK (id = 1),

@@ -176,6 +176,14 @@ allenamento mantenendo le date in calendario.
 
 ---
 
+## Zone cardiache, peso e calorie
+
+- **Zone cardiache:** dopo un test di' a Claude le nuove zone (*"salva le mie zone: 158, 166, 170, 175, da oggi"*).
+  Valgono da quella data: le attività precedenti restano con le zone di allora. `HR_BANDS` nel `.env` resta solo
+  il punto di partenza.
+- **Peso e composizione corporea** (`get_body_composition`) e **riepilogo giornaliero** con calorie, passi e FC a
+  riposo (`get_daily_summary`): letti dall'API ufficiale, non serve configurare niente.
+
 ## Note su di te
 
 Dille a Claude in chat (*"salva nelle mie note che la mia FC massima è 190"*) oppure scrivile in `data/athlete.md`,
@@ -197,7 +205,7 @@ Tutte le impostazioni stanno in `.env` (vedi [`.env.example`](../.env.example)).
 | `BACKFILL_FROM` | `2024-01-01` | Inizio della prima importazione |
 | `SYNC_INTERVAL_MIN` | `30` | Intervallo del sync automatico (0 = solo su richiesta) |
 | `REQUEST_DELAY_S` | `1.5` | Pausa tra le chiamate a Garmin |
-| `HR_BANDS` | `135,150,160,170` | Soglie inferiori delle fasce FC 2..N |
+| `HR_BANDS` | `135,150,160,170` | Zone FC di partenza: battiti a cui iniziano le zone 2..N. Le zone dette a Claude in chat (`set_hr_zones`) valgono dalla loro data in poi |
 | `DETAIL_TYPE_MATCH` | `all` | Tipi di attività per cui scaricare FIT/lap/record (`all` = tutte, oppure es. `run,cycling`) |
 | `ATHLETE_FILE` | `/data/athlete.md` | Note su di te |
 | `MCP_PORT` | `8765` | Porta nel container |
