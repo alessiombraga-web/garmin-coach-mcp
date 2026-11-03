@@ -219,6 +219,17 @@ Sul tuo computer, nella cartella **Documenti → Garmin Coach**, o in quella che
 Lì ci sono l'archivio delle corse e le tue note. Garmin Coach non manda i tuoi dati da nessuna parte: Claude li
 legge solo quando gli fai una domanda.
 
+**Serve un abbonamento a Claude? Con il piano gratuito funziona?**
+L'estensione si installa anche con il piano gratuito, ma i limiti di utilizzo del piano gratuito si esauriscono in
+fretta: un'analisi con lap, zone e confronti tra settimane richiede molto testo, e dopo poche domande Claude ti fa
+aspettare qualche ora. Garmin Coach consuma comunque molto meno che caricare i file in chat: Claude non legge i file
+interi, ma chiede solo i dati che gli servono (il riepilogo della corsa, i lap, la settimana) e li riceve già
+riassunti. Per usarlo con regolarità conviene il piano Pro, che secondo Anthropic offre almeno cinque volte
+l'utilizzo del piano gratuito. Qualche accorgimento per consumare meno, con qualsiasi piano:
+- apri una **nuova chat** per ogni analisi: più la chat è lunga, più ogni messaggio consuma;
+- metti più domande in un unico messaggio;
+- chiedi riepiloghi e lap prima dei dati secondo per secondo, che sono la parte più pesante.
+
 **Funziona anche dal telefono?**
 No, solo con l'app Claude sul computer, e solo mentre è aperta.
 

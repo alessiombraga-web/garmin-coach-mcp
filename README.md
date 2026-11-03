@@ -334,6 +334,15 @@ Garmin emails you about a week before the Personal API key expires.
 
 ---
 
+### Usage limits (Free plan)
+
+The extension also installs on the Free plan, but Free usage limits run out quickly: an analysis with laps, zones
+and week-on-week comparisons produces a lot of text. Garmin Coach still uses far less than uploading files to the
+chat, because Claude only requests the data it needs (activity summary, laps, weekly totals) already aggregated.
+For regular use the Pro plan is the practical choice (Anthropic states at least five times the Free usage per
+session). With any plan: start a new chat for each analysis, group questions in one message, and ask for summaries
+and laps before per-second series.
+
 ## Troubleshooting
 
 | Symptom | Cause / fix |
