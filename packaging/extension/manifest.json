@@ -72,7 +72,7 @@
     "hr_bands": {
       "type": "string",
       "title": "Starting heart-rate zones (optional)",
-      "description": "The bpm where zones 2, 3, 4 and 5 begin, comma separated (e.g. 135,150,160,170 = Z1 below 135 … Z5 from 170). Copy them from Garmin Connect (Heart rate zones). After a new test, just tell Claude your new zones in chat.",
+      "description": "The bpm where zones 2, 3, 4 and 5 begin, comma separated (e.g. 135,150,160,170 = Z1 below 135 … Z5 from 170). Copy them from the Garmin Connect app: your device → User Profile → Heart Rate & Power Zones. After a new test, just tell Claude your new zones in chat.",
       "default": "135,150,160,170",
       "required": false
     }
