@@ -21,6 +21,7 @@ Rispetto all'estensione, la versione Docker offre:
 - [Installazione](#installazione)
 - [Collegare Claude Desktop](#collegare-claude-desktop)
 - [Scrittura su Garmin (opzionale)](#scrittura-su-garmin-opzionale)
+- [Zone cardiache, peso e calorie](#zone-cardiache-peso-e-calorie)
 - [Note su di te](#note-su-di-te)
 - [Configurazione](#configurazione)
 - [Manutenzione](#manutenzione)
