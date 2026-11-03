@@ -258,6 +258,15 @@ Scarica il nuovo file `.mcpb` (passo 3) e aprilo come la prima volta. Archivio e
 In Claude: **Impostazioni → Estensioni → Garmin Coach → Disinstalla**. Se vuoi cancellare anche i dati, elimina la
 cartella **Documenti → Garmin Coach**.
 
+**Windows ha bloccato l'installazione (Smart App Control). È pericoloso?**
+No. Smart App Control, il filtro di sicurezza di Windows 11, blocca tutti i programmi e le librerie che non hanno una
+firma digitale riconosciuta da Microsoft. Garmin Coach usa Python: al momento dell'installazione Claude prepara un
+piccolo ambiente Python nella tua cartella utente, e quei file non sono firmati perché vengono creati sul tuo
+computer. Per ora l'estensione funziona solo con Smart App Control disattivato (**Sicurezza di Windows → Controllo
+app e browser → Impostazioni di Smart App Control**). Se lo riattivi, molto probabilmente Garmin Coach torna a
+bloccarsi all'avvio di Claude. Con gli aggiornamenti di Windows 11 dall'aprile 2026 Smart App Control si può
+riattivare senza reinstallare Windows; prima invece, una volta spento, restava spento.
+
 **È un prodotto Garmin o di Anthropic?**
 No, è un progetto personale e gratuito, condiviso con la community.
 
@@ -267,6 +276,7 @@ No, è un progetto personale e gratuito, condiviso con la community.
 
 | Cosa succede | Cosa fare |
 |---|---|
+| Windows blocca l'installazione o l'avvio ("Smart App Control") | Vedi la domanda su Smart App Control nelle [Domande frequenti](#domande-frequenti). |
 | Il doppio clic sul file non fa niente | Apri Claude → **Impostazioni → Estensioni** e trascina il file nella finestra. |
 | Claude risponde senza usare i tuoi dati | Controlla che l'estensione sia **attiva** (Impostazioni → Estensioni) e apri una **nuova chat**. |
 | Claude dice che la chiave non è valida o è scaduta | Crea una nuova chiave (passo 2) e incollala in **Impostazioni → Estensioni → Garmin Coach**. |

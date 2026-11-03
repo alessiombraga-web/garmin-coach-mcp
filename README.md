@@ -338,6 +338,7 @@ Garmin emails you about a week before the Personal API key expires.
 
 | Symptom | Cause / fix |
 |---|---|
+| Windows: install or start blocked by **Smart App Control** | The extension runs on Python: at install time Claude Desktop creates a Python environment under the user's AppData, and its `python.exe` and compiled libraries (`.pyd`) are unsigned, so Smart App Control blocks them. For now the extension needs Smart App Control off (Windows Security → App & browser control → Smart App Control settings); re-enabling it will most likely block the extension again at start-up. Since the April 2026 Windows 11 update it can be turned back on without reinstalling Windows. The Docker option is not affected on the server side. |
 | `sync_status`: `auth_required`, *Personal API rejected the key* | Key expired, revoked or mistyped. Create a new one and update it (extension settings or `.env`). |
 | `sync_status`: `network_error` | No internet connection, or a firewall blocks `personal.connectapi.garmin.com`. |
 | Claude doesn't use the tools | Check the extension is enabled (Settings → Extensions) and start a new chat. |
