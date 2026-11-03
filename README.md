@@ -35,6 +35,7 @@ which is **read-only**. Writing workouts to Garmin is optional and available onl
 - [Structured workouts](#structured-workouts)
 - [Configuration (Docker)](#configuration-docker)
 - [Maintenance](#maintenance)
+- [Usage limits (Free plan)](#usage-limits-free-plan)
 - [Troubleshooting](#troubleshooting)
 - [Building the extensions](#building-the-extensions)
 - [Data, privacy and security](#data-privacy-and-security)
@@ -334,7 +335,7 @@ Garmin emails you about a week before the Personal API key expires.
 
 ---
 
-### Usage limits (Free plan)
+## Usage limits (Free plan)
 
 The extension also installs on the Free plan, but Free usage limits run out quickly: an analysis with laps, zones
 and week-on-week comparisons produces a lot of text. Garmin Coach still uses far less than uploading files to the
