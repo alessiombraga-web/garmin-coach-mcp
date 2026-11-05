@@ -32,7 +32,7 @@ Ci vogliono **circa 10 minuti** e **non serve essere esperti di computer**: nien
 - [Passo 5 — La prima chat](#passo-5--la-prima-chat)
 - [Racconta a Claude chi sei](#racconta-a-claude-chi-sei)
 - [Le tue zone cardiache](#le-tue-zone-cardiache)
-- [Peso, composizione corporea e calorie](#peso-composizione-corporea-e-calorie)
+- [Sonno, HRV, peso e giornata](#sonno-hrv-peso-e-giornata)
 - [Esempi di domande](#esempi-di-domande)
 - [Domande frequenti](#domande-frequenti)
 - [Se qualcosa non va](#se-qualcosa-non-va)
@@ -170,21 +170,27 @@ Non serve modificare le impostazioni dell'estensione dopo ogni test: quelle rest
 
 ---
 
-## Peso, composizione corporea e calorie
+## Sonno, HRV, peso e giornata
 
-Garmin Coach legge anche, direttamente da Garmin:
+Oltre alle attività, Garmin Coach legge direttamente da Garmin anche i dati di tutti i giorni:
 
+- **sonno**, notte per notte: durata, sonno profondo, leggero, REM, risvegli, punteggio del sonno e gli altri valori
+  che Garmin registra durante la notte;
+- **HRV** (variabilità della frequenza cardiaca) notturna: media della notte, media della settimana, intervallo
+  di riferimento e stato, se il tuo orologio la misura;
+- **riepilogo di ogni giorno**: calorie totali, attive e a riposo, passi, piani, frequenza cardiaca a riposo,
+  minima e massima, stress, Body Battery, minuti di intensità, respirazione, saturazione (SpO2);
 - **peso e composizione corporea**: peso e, se la tua bilancia li misura (per esempio una bilancia Garmin Index),
-  BMI, percentuale di grasso, acqua, massa muscolare e ossea. Valgono anche i pesi inseriti a mano in Garmin Connect;
-- **riepilogo di ogni giorno**: calorie totali, attive e a riposo, passi, frequenza cardiaca a riposo, stress,
-  Body Battery.
+  BMI, percentuale di grasso, acqua, massa muscolare e ossea. Valgono anche i pesi inseriti a mano in Garmin Connect.
 
 Non c'è niente da configurare. Chiedi per esempio:
 
-> *"Com'è cambiato il mio peso negli ultimi due mesi? E la percentuale di grasso?"*
+> *"Come ho dormito questa settimana? C'è un legame con le sedute più dure?"*
+> *"Com'è andata la mia HRV nell'ultimo mese rispetto al carico di allenamento?"*
 > *"Quante calorie ho consumato ieri, tra allenamento e resto della giornata?"*
 
-I dati disponibili dipendono dai tuoi dispositivi: se la bilancia non misura un valore, Claude te lo dice.
+I dati disponibili dipendono dal tuo orologio e dalla bilancia: se un valore non c'è, Claude te lo dice.
+Questi dati vengono letti da Garmin al momento della domanda e non vengono salvati nell'archivio.
 
 ---
 
@@ -200,7 +206,8 @@ I dati disponibili dipendono dai tuoi dispositivi: se la bilancia non misura un 
 - *"Sto correndo troppo forte negli allenamenti facili?"*
 - *"La mia cadenza è migliorata rispetto all'anno scorso?"*
 
-**Su peso e giornata**
+**Su sonno, recupero e giornata**
+- *"Prima del lungo di domenica com'erano sonno, HRV e Body Battery?"*
 - *"Fammi vedere l'andamento del peso da settembre."*
 - *"Nei giorni di lungo quante calorie consumo in tutto?"*
 

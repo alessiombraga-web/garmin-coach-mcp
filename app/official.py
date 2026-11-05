@@ -115,6 +115,18 @@ class Client:
         """Raw daily summaries payload (calories, steps, resting HR...) for a date range (inclusive)."""
         return self._call(GarminPersonalApiClient.get_daily_summaries, start_date, end_date)
 
+    def sleep_summaries(self, start_date: str, end_date: str):
+        """Raw daily sleep summaries (duration, stages, score...) for a date range (inclusive)."""
+        return self._call(GarminPersonalApiClient.get_daily_sleep_summaries, start_date, end_date)
+
+    def hrv_summaries(self, start_date: str, end_date: str):
+        """Raw daily HRV summaries (overnight average, baseline, status) for a date range (inclusive)."""
+        return self._call(GarminPersonalApiClient.get_daily_hrv_summaries, start_date, end_date)
+
+    def heart_rate_zones(self):
+        """Raw heart-rate zones configured in Garmin Connect (per sport / device)."""
+        return self._call(GarminPersonalApiClient.get_heart_rate_zones)
+
     def close(self):
         if self._api:
             self._api.close()

@@ -182,8 +182,10 @@ allenamento mantenendo le date in calendario.
 - **Zone cardiache:** dopo un test di' a Claude le nuove zone (*"salva le mie zone: 158, 166, 170, 175, da oggi"*).
   Valgono da quella data: le attività precedenti restano con le zone di allora. `HR_BANDS` nel `.env` resta solo
   il punto di partenza.
-- **Peso e composizione corporea** (`get_body_composition`) e **riepilogo giornaliero** con calorie, passi e FC a
-  riposo (`get_daily_summary`): letti dall'API ufficiale, non serve configurare niente.
+- **Sonno** (`get_sleep`), **HRV notturna** (`get_hrv`), **riepilogo giornaliero** con calorie, passi, FC a riposo,
+  stress, Body Battery, respirazione e SpO2 (`get_daily_summary`), **peso e composizione corporea**
+  (`get_body_composition`): letti in diretta dall'API ufficiale, non serve configurare niente.
+- **Zone impostate sull'orologio** (`get_garmin_hr_zones`): Claude può leggerle e copiarle con `set_hr_zones`.
 
 ## Note su di te
 

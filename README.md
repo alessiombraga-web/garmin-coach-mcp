@@ -29,7 +29,7 @@ which is **read-only**. Writing workouts to Garmin is optional and available onl
 - [Connecting Claude Desktop to the Docker server](#connecting-claude-desktop-to-the-docker-server)
 - [Write access (optional, Docker only)](#write-access-optional-docker-only)
 - [Heart-rate zones](#heart-rate-zones)
-- [Weight, body composition and daily totals](#weight-body-composition-and-daily-totals)
+- [Sleep, HRV, weight and daily totals](#sleep-hrv-weight-and-daily-totals)
 - [Notes about you](#notes-about-you)
 - [Tools](#tools)
 - [Structured workouts](#structured-workouts)
@@ -220,16 +220,22 @@ Claude can also recompute any activity or weekly summary with today's zones on r
 
 ---
 
-## Weight, body composition and daily totals
+## Sleep, HRV, weight and daily totals
 
-Read live from the official API (nothing to configure):
+Read live from the official API (nothing to configure, not stored in the archive):
+
+- `get_sleep`: night by night, total sleep, deep/light/REM/awake time, sleep score and the other per-night values
+  Garmin provides.
+- `get_hrv`: overnight HRV (nightly and weekly average, baseline range, status) on watches that measure it.
 
 - `get_body_composition`: weight and, if your scale measures them (e.g. Garmin Index), BMI, body fat %, body water %,
   muscle mass, bone mass, visceral fat, metabolic age. Manual weight entries in Garmin Connect are included.
-- `get_daily_summary`: day by day, total/active/resting calories, steps, distance, resting/min/max heart rate,
-  stress, Body Battery, intensity minutes.
+- `get_daily_summary`: day by day, total/active/resting calories, steps, distance, floors, resting/min/max heart
+  rate, stress, Body Battery, intensity minutes, respiration, SpO2.
+- `get_garmin_hr_zones`: the heart-rate zones set on your Garmin device, so Claude can copy them with `set_hr_zones`.
 
-> *"How did my weight and body fat change in the last 2 months?"* · *"How many calories did I burn yesterday?"*
+> *"How did I sleep this week, and does it relate to the hard sessions?"* · *"How did my HRV trend against training load
+> this month?"* · *"How did my weight change in the last 2 months?"*
 
 Fields depend on your devices; the tools state which ones your account doesn't provide.
 
@@ -260,7 +266,10 @@ start from [`examples/athlete.example.md`](examples/athlete.example.md)).
 | `get_athlete_notes` / `update_athlete_notes` | Notes about you for future chats | ✅ | ✅ |
 | `set_hr_zones` / `get_hr_zones` / `delete_hr_zones` | Heart-rate zones from the chat, each valid from a date | ✅ | ✅ |
 | `get_body_composition` | Weight, BMI, body fat, water, muscle, bone (live, official API) | ✅ | ✅ |
-| `get_daily_summary` | Daily calories, steps, resting HR, stress, Body Battery (live, official API) | ✅ | ✅ |
+| `get_daily_summary` | Daily calories, steps, resting HR, stress, Body Battery, respiration, SpO2 (live, official API) | ✅ | ✅ |
+| `get_sleep` | Sleep per night: duration, stages, score (live, official API) | ✅ | ✅ |
+| `get_hrv` | Overnight HRV: average, baseline, status (live, official API) | ✅ | ✅ |
+| `get_garmin_hr_zones` | HR zones set on the Garmin device (live, official API) | ✅ | ✅ |
 | `query_sql` | Read-only SQL on the archive | ✅ | ✅ |
 | `create_workout` | Structured running workout: preview → confirm → upload and schedule | – | ✍️ community module |
 | `get_workout` / `list_workouts` | Workouts in Garmin Connect, calendar | – | ✍️ community module |

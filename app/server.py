@@ -37,9 +37,11 @@ when it is disabled the workout tools explain how to enable it.
   and reaches the watch at the next sync.
 - Heart-rate zones: when the athlete gives you new zones (e.g. after a test), save them with
   `set_hr_zones` (valid_from = test date) so time-in-zone figures use them; activities before that
-  date keep their old zones. `get_hr_zones` shows what is in use.
-- Body weight/composition (Garmin scale or manual entries): `get_body_composition`. Daily calories,
-  steps, resting HR: `get_daily_summary`. Both read live from the official API.
+  date keep their old zones. `get_hr_zones` shows what is in use; `get_garmin_hr_zones` reads the zones
+  set on the Garmin device, to copy them (ask first).
+- Wellness, read live from the official API: body weight/composition `get_body_composition`; daily
+  calories, steps, resting HR, stress, Body Battery, respiration, SpO2 `get_daily_summary`; sleep
+  `get_sleep`; overnight HRV `get_hrv`. Use them to put training in context (recovery, load, fatigue).
 - Athlete notes: when the athlete tells you lasting facts useful for analysis (max HR, zones, sensors,
   shoes, injuries to keep in mind, goals), offer to save them with `update_athlete_notes`; read them
   with `get_athlete_notes`. They are also appended below at server start.
@@ -624,7 +626,7 @@ def _wellness(fetch, parse, start_date, end_date, default_days: int, raw: bool):
         client.close()
     if raw:
         return None, "RAW (first window, truncated):\n" + json.dumps(payloads[:1], ensure_ascii=False)[:4000]
-    return (start_date, end_date, parse(payloads)), None
+    return (start_date, end_date, parse(payloads, start_date, end_date)), None
 
 
 @mcp.tool()
@@ -652,9 +654,10 @@ def get_body_composition(start_date: str | None = None, end_date: str | None = N
 
 @mcp.tool()
 def get_daily_summary(start_date: str | None = None, end_date: str | None = None, raw: bool = False) -> str:
-    """Day-by-day totals from Garmin: calories (total, active, resting/BMR), steps, distance, resting/min/max
-    heart rate, stress, Body Battery, intensity minutes. Default period: last 14 days.
-    Read live from the official Personal API (not archived). raw=True returns the unparsed response."""
+    """Day-by-day totals from Garmin: calories (total, active, resting/BMR), steps, distance, floors,
+    resting/min/max heart rate, stress, Body Battery, intensity minutes, respiration, SpO2.
+    Default period: last 14 days. Read live from the official Personal API (not archived).
+    raw=True returns the unparsed response."""
     res, err = _wellness(lambda c, a, b: c.daily_summaries(a, b), wellness.parse_daily,
                          start_date, end_date, 14, raw)
     if err:
@@ -662,9 +665,64 @@ def get_daily_summary(start_date: str | None = None, end_date: str | None = None
     start, end, rows = res
     if not rows:
         return f"No daily summaries from Garmin between {start} and {end}."
-    cols = ["date"] + list(wellness.DAILY_FIELDS)
+    cols = ["date"] + list(wellness.DAILY_PATHS)
     present = [c for c in cols if c == "date" or any(r.get(c) is not None for r in rows)]
     return f"{len(rows)} days {start} → {end}\n" + to_csv(present, [[r.get(c, "") for c in present] for r in rows])
+
+
+def _wellness_table(fetch, what: str, start_date, end_date, default_days: int, raw: bool) -> str:
+    res, err = _wellness(fetch, wellness.flatten_days, start_date, end_date, default_days, raw)
+    if err:
+        return err
+    start, end, rows = res
+    if not rows:
+        return (f"No {what} data from Garmin between {start} and {end} "
+                "(the watch may not record it, or it was not worn at night).")
+    cols, data = wellness.table(rows)
+    return (f"{what}: {len(rows)} days {start} → {end} (durations in minutes; field names as Garmin sends them)\n"
+            + to_csv(cols, data))
+
+
+@mcp.tool()
+def get_sleep(start_date: str | None = None, end_date: str | None = None, raw: bool = False) -> str:
+    """Night-by-night sleep from Garmin: total sleep, deep/light/REM/awake time, sleep score and the other
+    per-night values Garmin provides (e.g. respiration, SpO2, stress during sleep), one row per night.
+    Default period: last 14 days. Read live from the official Personal API. raw=True: unparsed response."""
+    return _wellness_table(lambda c, a, b: c.sleep_summaries(a, b), "sleep",
+                           start_date, end_date, 14, raw)
+
+
+@mcp.tool()
+def get_hrv(start_date: str | None = None, end_date: str | None = None, raw: bool = False) -> str:
+    """Overnight heart-rate variability from Garmin, one row per night: nightly average, weekly average,
+    baseline range and HRV status, when the watch supports it. Default period: last 28 days.
+    Read live from the official Personal API. raw=True: unparsed response."""
+    return _wellness_table(lambda c, a, b: c.hrv_summaries(a, b), "HRV",
+                           start_date, end_date, 28, raw)
+
+
+@mcp.tool()
+def get_garmin_hr_zones(raw: bool = False) -> str:
+    """Heart-rate zones as configured on the user's Garmin device/account (read live). Useful to copy them
+    into set_hr_zones: ask the user before saving, and from which date they apply."""
+    if config.read_source() != "official":
+        return "This needs the official Garmin Personal API key (GARMIN_PERSONAL_API_KEY). " + official.KEY_HINT
+    try:
+        client = official.Client()
+    except (official.AuthError, official.RateLimited) as e:
+        return str(e)
+    try:
+        data = client.heart_rate_zones()
+    except (official.AuthError, official.RateLimited) as e:
+        return str(e)
+    except Exception as e:  # noqa: BLE001
+        return f"Garmin request failed: {type(e).__name__}: {e}"
+    finally:
+        client.close()
+    text = json.dumps(data, ensure_ascii=False)
+    if raw or len(text) <= 3000:
+        return "Garmin heart-rate zones (raw):\n" + text[:6000]
+    return "Garmin heart-rate zones (truncated):\n" + text[:3000]
 
 
 # ---------------------------------------------------------------- athlete notes

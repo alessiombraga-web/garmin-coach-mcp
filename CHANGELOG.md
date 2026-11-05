@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 — 2026-11-05
+
+- **Sleep:** `get_sleep`, night by night (duration, stages, sleep score and the other values Garmin provides).
+- **Overnight HRV:** `get_hrv` (nightly and weekly average, baseline, status).
+- **Garmin zones:** `get_garmin_hr_zones` reads the heart-rate zones set on the device, to copy them with `set_hr_zones`.
+- **Fix — daily summary:** returned nothing with the real Personal API response (nested layout). Now parsed, with
+  floors, respiration and SpO2 added.
+- **Fix — body composition:** duplicated measurements and a value outside the requested period (Garmin's
+  previous/next-date references) were listed as measurements.
+
 ## 0.4.0 — 2026-11-03
 
 - **Heart-rate zones from the chat, with dates.** New tools `set_hr_zones`, `get_hr_zones`, `delete_hr_zones`:
