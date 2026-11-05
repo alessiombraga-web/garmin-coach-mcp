@@ -187,7 +187,7 @@ def parse_daily(payloads: list, start: str | None = None, end: str | None = None
 
 # ---- generic per-day flattening (sleep, HRV and other endpoints whose layout is not pinned down)
 _NOISE = re.compile(r"(^id$|pk$|uuid|userprofile|deviceid|timestamp|gmt$|local$|version|^date$|calendardate"
-                    r"|summarydate|^source|feedback|^msg|messages?$)", re.I)
+                    r"|summarydate|^source|feedback|^msg|messages?$|optimal|ideal|agegroup|confirmationtype|markervalue)", re.I)
 
 
 def _flatten(d: dict, prefix: str = "", out: dict | None = None) -> dict:
@@ -210,7 +210,7 @@ def _flatten(d: dict, prefix: str = "", out: dict | None = None) -> dict:
                 key, v = re.sub(r"(?i)(in)?millis$", "", key) + "_min", v / 60000.0
             out[key] = round(v, 1) if isinstance(v, float) else v
         else:
-            out[key] = str(v)[:40]
+            out[key] = str(v)[:60]
     return out
 
 
@@ -239,7 +239,7 @@ def flatten_days(payloads: list, start: str | None = None, end: str | None = Non
     return [best[k] for k in sorted(best)]
 
 
-def table(rows: list[dict], max_cols: int = 40) -> tuple[list[str], list[list]]:
+def table(rows: list[dict], max_cols: int = 60) -> tuple[list[str], list[list]]:
     """Columns ordered by how many days have them (most common first), capped."""
     counts: dict[str, int] = {}
     for r in rows:
@@ -248,3 +248,22 @@ def table(rows: list[dict], max_cols: int = 40) -> tuple[list[str], list[list]]:
                 counts[k] = counts.get(k, 0) + 1
     cols = ["date"] + [k for k, _ in sorted(counts.items(), key=lambda kv: -kv[1])][:max_cols]
     return cols, [[r.get(c, "") for c in cols] for r in rows]
+
+
+def format_hr_zones(payload) -> str:
+    """Readable Garmin zones per sport, plus the thresholds string for set_hr_zones (floors of Z2..Z5)."""
+    lines = []
+    for d in _dicts(payload):
+        floors = [d.get(f"zone{i}Floor") for i in range(1, 6)]
+        if not all(isinstance(f, (int, float)) for f in floors):
+            continue
+        sport = d.get("sport") or "?"
+        method = d.get("trainingMethod") or "?"
+        z = [int(f) for f in floors]
+        bands = " | ".join([f"Z1 {z[0]}-{z[1] - 1}"] + [f"Z{i + 1} {z[i]}-{z[i + 1] - 1}" for i in range(1, 4)]
+                           + [f"Z5 >={z[4]}"])
+        extra = ", ".join(f"{k} {d[k]}" for k in ("maxHeartRateUsed", "restingHeartRateUsed",
+                                                     "lactateThresholdHeartRateUsed") if d.get(k) is not None)
+        lines.append(f"- sport {sport}, method {method}: {bands} ({extra})\n"
+                     f"  thresholds for set_hr_zones: {','.join(str(x) for x in z[1:])}")
+    return "\n".join(lines)

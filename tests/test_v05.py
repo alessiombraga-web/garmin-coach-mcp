@@ -76,3 +76,19 @@ def test_sleep_and_hrv(tmp_path, monkeypatch):
     assert "sleepLevels" not in out and "Timestamp" not in out
     out = base._call(s, "get_hrv", {"start_date": "2026-11-01", "end_date": "2026-11-03"})
     assert "lastNightAvg" in out and "BALANCED" in out and "baseline.balancedLow" in out
+
+
+def test_garmin_zones_format():
+    from app import wellness
+    real = [{"trainingMethod": "CUSTOM", "zone1Floor": 120, "zone2Floor": 158, "zone3Floor": 167,
+             "zone4Floor": 175, "zone5Floor": 182, "maxHeartRateUsed": 191, "sport": "DEFAULT"}]
+    out = wellness.format_hr_zones(real)
+    assert "Z1 120-157 | Z2 158-166 | Z3 167-174 | Z4 175-181 | Z5 >=182" in out
+    assert "thresholds for set_hr_zones: 158,167,175,182" in out
+
+
+def test_sleep_drops_score_ranges():
+    from app import wellness
+    rows = wellness.flatten_days([{"calendarDate": "2026-11-02", "ageGroup": "ADULT",
+                                   "sleepScores": {"totalDuration": {"qualifierKey": "FAIR", "optimalStart": 28200}}}])
+    assert rows == [{"date": "2026-11-02", "sleepScores.totalDuration.qualifierKey": "FAIR"}]

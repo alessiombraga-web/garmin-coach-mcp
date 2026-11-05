@@ -2,7 +2,7 @@
   "manifest_version": "0.4",
   "name": "garmin-coach",
   "display_name": "Garmin Coach",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Let Claude read your Garmin activities: runs, rides, swims, laps, heart rate, running dynamics, weekly trends.",
   "long_description": "Garmin Coach keeps a private archive of your Garmin Connect activities on your computer (original FIT files, laps and second-by-second data) and lets Claude analyse them: single runs or rides, intervals, cardiac drift, weekly volume and intensity, long-term trends. Works with every sport recorded on Garmin.\n\nData is read through Garmin's official Connect Personal API, which is read-only: this extension never writes anything to your Garmin account. You only need a Personal API key, created in Garmin Connect under Settings → Personal API.\n\nIt can also read your sleep, overnight HRV, weight and body composition (Garmin scale) and daily totals such as calories, steps, resting heart rate, stress and Body Battery.\n\nYour data stays on your computer, in the folder you choose.",
   "author": {

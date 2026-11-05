@@ -720,9 +720,11 @@ def get_garmin_hr_zones(raw: bool = False) -> str:
     finally:
         client.close()
     text = json.dumps(data, ensure_ascii=False)
-    if raw or len(text) <= 3000:
+    pretty = "" if raw else wellness.format_hr_zones(data)
+    if not pretty:
         return "Garmin heart-rate zones (raw):\n" + text[:6000]
-    return "Garmin heart-rate zones (truncated):\n" + text[:3000]
+    return ("Heart-rate zones set in Garmin Connect (the sport-specific entry is what the watch uses for that "
+            "sport; DEFAULT applies to the others):\n" + pretty)
 
 
 # ---------------------------------------------------------------- athlete notes

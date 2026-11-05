@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 — 2026-11-05
+
+Checked against a real account:
+- `get_sleep`: leaner table (no score target ranges or constant fields), so the useful per-night values all fit.
+- `get_garmin_hr_zones`: readable zones per sport (Garmin keeps a default set and sport-specific ones, e.g.
+  running), with the thresholds ready for `set_hr_zones`.
+
 ## 0.5.0 — 2026-11-05
 
 - **Sleep:** `get_sleep`, night by night (duration, stages, sleep score and the other values Garmin provides).
