@@ -1,12 +1,15 @@
 [project]
 name = "garmin-coach-extension"
-version = "0.5.1"
+version = "0.5.2"
 description = "Garmin Coach Claude Desktop extension (read-only, official Garmin Personal API)"
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "garmin-connect-personal-api-python==1.0.0",
     "mcp==1.27.0",
     "fitdecode==0.11.0",
+    # cryptography >= 49 publishes no x86_64 macOS wheels (Intel Macs would need to compile it, which fails
+    # without OpenSSL): keep the last release with universal2 wheels there.
+    "cryptography<49; sys_platform == 'darwin' and platform_machine == 'x86_64'",
 ]
 
 [tool.uv]

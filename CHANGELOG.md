@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2 — 2026-11-06
+
+- **Fix — Intel Macs:** the extension failed to install on x86_64 macOS because `cryptography` 49+ (pulled in by
+  the MCP SDK) no longer publishes Intel wheels and compiling it needs OpenSSL. On Intel Macs the extension now pins
+  `cryptography<49` (48.0.1, universal2 wheel). Apple Silicon, Windows and Docker are unchanged.
+
 ## 0.5.1 — 2026-11-05
 
 Checked against a real account:

@@ -1,6 +1,6 @@
 {
   "name": "garmin-coach-connector",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "description": "Claude Desktop extension that connects to a self-hosted Garmin Coach server via mcp-remote",
   "license": "MIT",
