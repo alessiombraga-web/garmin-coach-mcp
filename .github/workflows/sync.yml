@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install garminconnect requests fitdecode
+          pip install garminconnect requests fitdecode garmin-personal-api
 
       - name: Run Garmin Sync
         env:
